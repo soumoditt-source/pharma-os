@@ -21,8 +21,16 @@ FP_SIZE = 1024
 MORGAN_GENERATOR = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=FP_SIZE)
 
 
+def _verbose_logging_enabled() -> bool:
+    """Allow inference.py to suppress non-structured stdout during grading."""
+    raw_value = os.getenv("PHARMAOS_VERBOSE_LOGS", "1").strip().lower()
+    return raw_value not in {"0", "false", "no", "off"}
+
+
 def _log(message):
     """Emit ASCII-safe console logs across Windows and container shells."""
+    if not _verbose_logging_enabled():
+        return
     print(str(message).encode("ascii", errors="replace").decode("ascii"))
 
 class PharmaBioactivityNet(nn.Module):

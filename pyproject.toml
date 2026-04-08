@@ -64,5 +64,5 @@ where = ["."]
 include = ["pharma_os*", "server*"]
 
 [project.urls]
-Homepage = "https://huggingface.co/spaces/soumoditya/pharma-os"
+Homepage = "https://huggingface.co/spaces/soumod000575/pharma-os"
 Repository = "https://github.com/soumoditt-source/pharma-os"

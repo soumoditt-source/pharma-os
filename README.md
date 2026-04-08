@@ -1,3 +1,16 @@
+---
+title: PharmaOS
+sdk: docker
+app_port: 7860
+license: apache-2.0
+tags:
+  - openenv
+  - drug-discovery
+  - chemistry
+  - rdkit
+  - reinforcement-learning
+---
+
 # PharmaOS
 
 PharmaOS is an OpenEnv environment for real-world drug discovery work. An agent acts like a medicinal chemist: it proposes new SMILES strings, receives dense feedback from RDKit-based property calculations, and must improve drug-likeness without collapsing into invalid, repetitive, or assay-interfering molecules.
@@ -43,11 +56,11 @@ The dashboard also includes a smart compound resolver for exact compounds, commo
 | `qed_optimizer` | medium | maximize QED while avoiding PAINS penalties | `0.75` | `15` |
 | `multi_objective_designer` | hard | optimize QED, SA, similarity, and ADMET jointly | `0.70` | `20` |
 
-Each task has a deterministic programmatic scorer in [server/environment.py](/d:/open%20meta%20pytorch/pharma-os/server/environment.py).
+Each task has a deterministic programmatic scorer in [server/environment.py](server/environment.py).
 
 ## Action space
 
-The action model is defined in [models.py](/d:/open%20meta%20pytorch/pharma-os/models.py).
+The action model is defined in [models.py](models.py).
 
 ```python
 PharmaAction(
@@ -61,7 +74,7 @@ The agent proposes a new SMILES string each step. Invalid or repeated proposals 
 
 ## Observation space
 
-The observation model is also defined in [models.py](/d:/open%20meta%20pytorch/pharma-os/models.py) and includes:
+The observation model is also defined in [models.py](models.py) and includes:
 - current SMILES
 - molecular properties
 - ADMET summary
@@ -164,7 +177,7 @@ http://127.0.0.1:8000/web
 
 ## Inference script
 
-The hackathon baseline script is [inference.py](/d:/open%20meta%20pytorch/pharma-os/inference.py).
+The hackathon baseline script is [inference.py](inference.py).
 
 Required environment variables:
 - `API_BASE_URL`
@@ -173,12 +186,14 @@ Required environment variables:
   default: `Qwen/Qwen2.5-72B-Instruct`
 - `HF_TOKEN`
   required
+- `LOCAL_IMAGE_NAME`
+  optional: reserved for Docker-image based runners
 - `PHARMAO_URL`
   default: `http://localhost:8000`
 
 The script:
 - uses the OpenAI client for LLM calls
-- emits only `[START]`, `[STEP]`, and `[END]` lines
+- emits only `[START]`, `[STEP]`, and `[END]` lines on stdout
 - includes `score=` in the final line
 - uses deterministic task seeds `101`, `202`, and `303` for reproducibility
 - falls back to a deterministic curated medicinal-chemistry policy if the external LLM is unavailable
@@ -233,7 +248,7 @@ Suggested environment variables for the Space:
 
 ## Training and Colab T4
 
-The PPO baseline in [train_ppo.py](/d:/open%20meta%20pytorch/pharma-os/train_ppo.py) now uses a real Gymnasium wrapper around the actual PharmaOS environment. It does not use random rewards or a fake latent action space.
+The PPO baseline in [train_ppo.py](train_ppo.py) now uses a real Gymnasium wrapper around the actual PharmaOS environment. It does not use random rewards or a fake latent action space.
 
 Train locally:
 
@@ -248,12 +263,12 @@ python train_ppo.py --curriculum --timesteps 6000 --eval-episodes 3 --device aut
 ```
 
 For Colab T4:
-- see [COLAB_T4_GUIDE.md](/d:/open%20meta%20pytorch/pharma-os/COLAB_T4_GUIDE.md)
-- use [PharmaOS_PPO_Colab.ipynb](/d:/open%20meta%20pytorch/pharma-os/PharmaOS_PPO_Colab.ipynb)
+- see [COLAB_T4_GUIDE.md](COLAB_T4_GUIDE.md)
+- use [PharmaOS_PPO_Colab.ipynb](PharmaOS_PPO_Colab.ipynb)
 
 ## Research grounding
 
-The environment design and roadmap are summarized in [DRUG_DISCOVERY_RESEARCH.md](/d:/open%20meta%20pytorch/pharma-os/DRUG_DISCOVERY_RESEARCH.md).
+The environment design and roadmap are summarized in [DRUG_DISCOVERY_RESEARCH.md](DRUG_DISCOVERY_RESEARCH.md).
 
 Key ideas reflected in the current environment:
 - multi-objective optimization instead of a single scalar property
@@ -281,6 +296,7 @@ bash scripts/validate-submission.sh
 Required for the hackathon form:
 - public GitHub repository URL for this project
 - live Hugging Face Space URL
+- note: the form expects a Space URL such as `https://huggingface.co/spaces/<user>/pharma-os`, not a model repo URL such as `https://huggingface.co/<user>/pharma-os`
 
 Current Hugging Face profile:
 - `https://huggingface.co/soumod000575`

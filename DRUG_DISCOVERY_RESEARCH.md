@@ -73,3 +73,21 @@ This note collects source-backed papers that shaped the current PharmaOS design 
 
 5. Evaluate with diversity metrics, not only best score.
    GuacaMol and later work make it clear that a winner-style system should report novelty and scaffold spread alongside final reward.
+
+## Operational references used for submission hardening
+
+1. Meta PyTorch OpenEnv project
+   Link: https://github.com/meta-pytorch/OpenEnv
+   Why it matters: this is the primary reference point for the OpenEnv ecosystem, validation flow, and Hugging Face deployment pattern used by the hackathon.
+
+2. Hugging Face Spaces configuration reference
+   Link: https://huggingface.co/docs/hub/spaces-config-reference
+   Why it matters: Docker Spaces are configured through README YAML front matter. PharmaOS now includes Space metadata for `sdk: docker`, `app_port: 7860`, and discoverability tags such as `openenv`.
+
+3. Hugging Face Docker Spaces docs
+   Link: https://huggingface.co/docs/hub/spaces-sdks-docker
+   Why it matters: these docs define the container-first deployment contract that the PharmaOS Dockerfile follows for a live Space submission.
+
+4. Official deployment notes from the OpenEnv tutorial material
+   Link: https://github.com/meta-pytorch/OpenEnv
+   Why it matters: the deployment guidance reinforces that a live Hugging Face Space is the real submission target, with `/reset`, `/step`, `/state`, `/health`, and `/ws` endpoints exposed for agents and validators.

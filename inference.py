@@ -6,6 +6,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 from openai import OpenAI
+
+os.environ.setdefault("PHARMAOS_VERBOSE_LOGS", "0")
+
 from server.environment import (
     IMPROVED_MOLECULE_HINTS,
     LIPINSKI_START_MOLECULES,
@@ -18,6 +21,7 @@ from server.environment import (
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 HF_TOKEN = os.getenv("HF_TOKEN")
+LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 PHARMAO_URL = os.getenv("PHARMAO_URL", "http://localhost:8000").rstrip("/")
 
 if HF_TOKEN is None:

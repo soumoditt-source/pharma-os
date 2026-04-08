@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 import time
@@ -16,11 +17,72 @@ ROOT = Path(__file__).resolve().parents[1]
 PID_FILE = ROOT / ".server.pid"
 STDOUT_LOG = ROOT / ".server.out.log"
 STDERR_LOG = ROOT / ".server.err.log"
+START_LINE_RE = re.compile(r"^\[START\] task=\S+ env=\S+ model=.+$")
+STEP_LINE_RE = re.compile(
+    r"^\[STEP\] step=\d+ action=.* reward=-?\d+\.\d{2} done=(true|false) error=.*$"
+)
+END_LINE_RE = re.compile(
+    r"^\[END\] success=(true|false) steps=\d+ score=-?\d+\.\d{2} rewards=-?\d+\.\d{2}(,-?\d+\.\d{2})*$"
+)
 
 
 def run(command: list[str], env: Dict[str, str] | None = None) -> None:
     print(f"[preflight] {' '.join(command)}")
     subprocess.run(command, cwd=ROOT, check=True, env=env)
+
+
+def run_capture(command: list[str], env: Dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+    print(f"[preflight] {' '.join(command)}")
+    completed = subprocess.run(
+        command,
+        cwd=ROOT,
+        check=True,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    if completed.stdout:
+        print(completed.stdout, end="")
+    if completed.stderr:
+        print(completed.stderr, end="", file=sys.stderr)
+    return completed
+
+
+def validate_inference_stdout(stdout: str) -> None:
+    lines = [line.strip() for line in stdout.splitlines() if line.strip()]
+    if not lines:
+        raise RuntimeError("inference.py emitted no stdout lines.")
+
+    task_block_state = "expect_start"
+    saw_end = False
+
+    for line in lines:
+        if START_LINE_RE.fullmatch(line):
+            if task_block_state != "expect_start":
+                raise RuntimeError(f"Unexpected [START] line order in inference output: {line}")
+            task_block_state = "expect_step_or_end"
+            saw_end = False
+            continue
+
+        if STEP_LINE_RE.fullmatch(line):
+            if task_block_state != "expect_step_or_end":
+                raise RuntimeError(f"Unexpected [STEP] line order in inference output: {line}")
+            continue
+
+        if END_LINE_RE.fullmatch(line):
+            if task_block_state != "expect_step_or_end":
+                raise RuntimeError(f"Unexpected [END] line order in inference output: {line}")
+            task_block_state = "expect_start"
+            saw_end = True
+            continue
+
+        raise RuntimeError(
+            "Inference output contained a non-compliant stdout line. "
+            f"Only [START], [STEP], and [END] lines are allowed: {line}"
+        )
+
+    if task_block_state != "expect_start" or not saw_end:
+        raise RuntimeError("Inference output ended before emitting a final [END] line.")
 
 
 def server_healthy(base_url: str) -> bool:
@@ -117,7 +179,8 @@ def main() -> None:
             inference_env.setdefault("API_BASE_URL", "http://127.0.0.1:9/v1")
             inference_env.setdefault("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
             inference_env["PHARMAO_URL"] = base_url
-            run([sys.executable, "inference.py"], env=inference_env)
+            inference_run = run_capture([sys.executable, "inference.py"], env=inference_env)
+            validate_inference_stdout(inference_run.stdout)
 
         if args.open_browser:
             webbrowser.open(f"{base_url}/web")
