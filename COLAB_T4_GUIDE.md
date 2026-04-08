@@ -18,6 +18,12 @@ After cloning the repo and installing requirements:
 python train_ppo.py --task qed_optimizer --timesteps 2500 --device cuda --output-dir trained_agents_colab
 ```
 
+For the staged research-guided version:
+
+```bash
+python train_ppo.py --curriculum --timesteps 6000 --eval-episodes 3 --device cuda --output-dir trained_agents_colab
+```
+
 ## Notes
 
 - The PPO baseline uses a curated action catalog of medicinal-chemistry proposals.

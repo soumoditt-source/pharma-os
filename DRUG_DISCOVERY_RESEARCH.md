@@ -43,6 +43,20 @@ This note collects source-backed papers that shaped the current PharmaOS design 
 - Penalizes PAINS and repeated exploration.
 - Tracks scaffold diversity, which is a practical proxy for broader chemical-space coverage.
 
+## Research-driven upgrades now integrated
+
+1. Diversity-aware deterministic baseline
+   The fallback policy in `inference.py` now ranks candidate molecules by projected task score, novelty, synthetic accessibility, and PAINS liability instead of walking a fixed list. This is a practical nod to the diversity-control ideas emphasized by REINVENT and memory-assisted RL work.
+
+2. Curriculum-ready PPO training
+   `train_ppo.py` now supports a curriculum mode that trains sequentially across easy, medium, and hard tasks. That directly reflects the staged optimization pattern discussed in modern generative design systems such as REINVENT 4.
+
+3. Broader validated chemistry resolution
+   The dashboard and backend now resolve exact compounds, aliases, and broad common-name product classes into validated PubChem-backed compounds. This makes the system much more usable for real judges and non-specialist users without relying on unvalidated hallucinated molecules.
+
+4. Evaluation beyond final reward
+   The training utilities now expose evaluation metrics for final score, success rate, unique molecules, unique scaffolds, and mean steps, aligning better with GuacaMol-style emphasis on diversity and quality together.
+
 ## What these papers suggest as the next upgrade path
 
 1. Add curriculum stages.

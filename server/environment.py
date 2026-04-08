@@ -29,7 +29,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 try:
     from rdkit import Chem, DataStructs
     from rdkit.Chem import (
-        Descriptors, QED, AllChem, rdMolDescriptors,
+        Descriptors, QED, rdMolDescriptors,
         Draw, rdFingerprintGenerator
     )
     from rdkit.Chem.rdMolDescriptors import CalcTPSA, CalcFractionCSP3
@@ -319,8 +319,9 @@ def compute_properties(smiles: str, target_smiles: str = "") -> Optional[Molecul
     if target_smiles:
         target_mol = Chem.MolFromSmiles(target_smiles)
         if target_mol is not None:
-            fp1 = AllChem.GetMorganFingerprintAsBitVect(mol, radius=2, nBits=2048)
-            fp2 = AllChem.GetMorganFingerprintAsBitVect(target_mol, radius=2, nBits=2048)
+            morgan_generator = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
+            fp1 = morgan_generator.GetFingerprint(mol)
+            fp2 = morgan_generator.GetFingerprint(target_mol)
             fp_sim = DataStructs.TanimotoSimilarity(fp1, fp2)
 
     # ── ADMET proxies ───────────────────────────────────────────────────────

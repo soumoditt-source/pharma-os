@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from rdkit import Chem
-from rdkit.Chem import AllChem
+from rdkit.Chem import rdFingerprintGenerator
 import numpy as np
 import pickle
 from sklearn.ensemble import RandomForestRegressor
@@ -18,6 +18,7 @@ DATA_PATH = os.path.join(DATA_DIR, "esol_delaney.csv")
 MODEL_PATH = os.path.join(DATA_DIR, "pharma_solubility_net.pt")
 RF_MODEL_PATH = os.path.join(DATA_DIR, "pharma_rf.pkl")
 FP_SIZE = 1024
+MORGAN_GENERATOR = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=FP_SIZE)
 
 
 def _log(message):
@@ -53,7 +54,8 @@ def smiles_to_fp(smiles, n_bits=FP_SIZE):
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
             return np.zeros((n_bits,), dtype=np.float32)
-        fp = AllChem.GetMorganFingerprintAsBitVect(mol, 2, nBits=n_bits)
+        generator = MORGAN_GENERATOR if n_bits == FP_SIZE else rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=n_bits)
+        fp = generator.GetFingerprint(mol)
         arr = np.zeros((0,), dtype=np.int8)
         from rdkit import DataStructs
         DataStructs.ConvertToNumpyArray(fp, arr)

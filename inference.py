@@ -6,6 +6,14 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 from openai import OpenAI
+from server.environment import (
+    IMPROVED_MOLECULE_HINTS,
+    LIPINSKI_START_MOLECULES,
+    MULTI_OBJ_START_MOLECULES,
+    QED_START_MOLECULES,
+    compute_properties,
+    compute_task_score,
+)
 
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
@@ -57,6 +65,11 @@ FALLBACK_MOLECULES: Dict[str, List[str]] = {
         "Cc1ccc(cc1)NC(=O)Cn1ccc2ccccc21",
         "Cc1ccc(cc1)S(=O)(=O)Nc1ccccn1",
     ],
+}
+TASK_CANDIDATE_LIBRARY: Dict[str, List[str]] = {
+    "lipinski_optimizer": list(dict.fromkeys(FALLBACK_MOLECULES["lipinski_optimizer"] + IMPROVED_MOLECULE_HINTS["lipinski_optimizer"] + LIPINSKI_START_MOLECULES)),
+    "qed_optimizer": list(dict.fromkeys(FALLBACK_MOLECULES["qed_optimizer"] + IMPROVED_MOLECULE_HINTS["qed_optimizer"] + QED_START_MOLECULES)),
+    "multi_objective_designer": list(dict.fromkeys(FALLBACK_MOLECULES["multi_objective_designer"] + IMPROVED_MOLECULE_HINTS["multi_objective_designer"] + MULTI_OBJ_START_MOLECULES)),
 }
 
 SYSTEM_PROMPT = (
@@ -134,14 +147,46 @@ def _choose_action(
         content = ""
 
     proposed = _extract_smiles(content)
-    if proposed and proposed not in tried:
+    if proposed and proposed not in tried and _score_candidate(task_name, obs, proposed, tried) > float("-inf"):
         return proposed
 
-    for candidate in FALLBACK_MOLECULES[task_name]:
+    return _best_fallback_candidate(task_name, obs, tried)
+
+
+def _score_candidate(
+    task_name: str,
+    obs: Dict[str, Any],
+    candidate: str,
+    tried: List[str],
+) -> float:
+    if not candidate or candidate in tried:
+        return float("-inf")
+
+    target_smiles = (obs.get("metadata") or {}).get("target_smiles", "")
+    props = compute_properties(candidate, target_smiles=target_smiles)
+    if props is None:
+        return float("-inf")
+
+    base_score = compute_task_score(props, task_name)
+    current_best = float(obs.get("best_score", 0.0) or 0.0)
+    improvement = base_score - current_best
+    novelty_bonus = 0.05 if candidate not in tried else -0.20
+    pains_penalty = -0.10 if bool(props.pains_alert) else 0.0
+    synthetic_bonus = max(0.0, (10.0 - float(props.sa_score or 10.0)) / 20.0)
+    uncertainty_proxy_penalty = -0.03 if (props.molecular_weight or 0.0) > 550 else 0.0
+    return base_score + 0.35 * improvement + novelty_bonus + synthetic_bonus + pains_penalty + uncertainty_proxy_penalty
+
+
+def _best_fallback_candidate(task_name: str, obs: Dict[str, Any], tried: List[str]) -> str:
+    ranked = sorted(
+        TASK_CANDIDATE_LIBRARY[task_name],
+        key=lambda candidate: _score_candidate(task_name, obs, candidate, tried),
+        reverse=True,
+    )
+    for candidate in ranked:
         if candidate not in tried:
             return candidate
-
-    return FALLBACK_MOLECULES[task_name][0]
+    return ranked[0]
 
 
 def _reset_env(session: requests.Session, task_name: str) -> Dict[str, Any]:

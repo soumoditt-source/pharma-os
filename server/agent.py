@@ -6,6 +6,7 @@ from enum import Enum
 from typing import Optional
 
 from openai import OpenAI
+from server.compound_lookup import resolve_compound_query
 
 try:
     from sklearn.feature_extraction.text import TfidfVectorizer
@@ -190,6 +191,47 @@ class PharmaAgent:
             )
         return None
 
+    def _compound_lookup_match(self, query: str) -> Optional[ChainOfThought]:
+        lowered = query.lower().strip()
+        chemistry_terms = {
+            "qed",
+            "lipinski",
+            "herg",
+            "tpsa",
+            "admet",
+            "solubility",
+            "logp",
+            "smiles",
+            "score",
+            "optimize",
+            "optimizer",
+        }
+        if any(term in lowered for term in chemistry_terms):
+            return None
+        if len(lowered.split()) > 8:
+            return None
+
+        payload = resolve_compound_query(query)
+        results = payload.get("results", [])
+        if not results:
+            return None
+
+        top_results = results[:3]
+        names = ", ".join(result["name"] for result in top_results)
+        loadable = sum(1 for result in top_results if result.get("loadable"))
+        explanation = payload.get("summary", "Validated compounds were found for this query.")
+        recommendation = (
+            f"{explanation} Representative compounds: {names}. "
+            f"{loadable} of the top {len(top_results)} include loadable SMILES strings for direct use in PharmaOS."
+        )
+        return ChainOfThought(
+            level=ThinkingLevel.RAG.value,
+            confidence=0.9,
+            reasoning="Resolved the query through the validated compound lookup service.",
+            recommendation=recommendation,
+            formula="Validated Compound Resolver",
+        )
+
     def _rag_search(self, query: str) -> Optional[ChainOfThought]:
         if not SKLEARN_AVAILABLE or self.vectorizer is None:
             best_match = None
@@ -268,6 +310,10 @@ class PharmaAgent:
         cot = self._fast_cache_match(query)
         if cot:
             return cot
+
+        compound_cot = self._compound_lookup_match(query)
+        if compound_cot:
+            return compound_cot
 
         cot = self._rag_search(query)
         if cot and cot.confidence > 0.8:

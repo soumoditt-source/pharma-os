@@ -241,6 +241,12 @@ Train locally:
 python train_ppo.py --task qed_optimizer --timesteps 5000 --device auto
 ```
 
+Research-guided curriculum training:
+
+```bash
+python train_ppo.py --curriculum --timesteps 6000 --eval-episodes 3 --device auto
+```
+
 For Colab T4:
 - see [COLAB_T4_GUIDE.md](/d:/open%20meta%20pytorch/pharma-os/COLAB_T4_GUIDE.md)
 - use [PharmaOS_PPO_Colab.ipynb](/d:/open%20meta%20pytorch/pharma-os/PharmaOS_PPO_Colab.ipynb)
@@ -254,6 +260,7 @@ Key ideas reflected in the current environment:
 - diversity-aware exploration rather than score hacking
 - deterministic environment-side feedback instead of opaque reward models
 - future extension path toward structure-aware and synthesis-aware objectives
+- curriculum-ready PPO and diversity-aware baseline selection inspired by REINVENT, memory-assisted RL, and GuacaMol
 
 ## Validation helpers
 

@@ -16,6 +16,7 @@ from server.environment import (
     QED_START_MOLECULES,
     PharmaEnvironment,
 )
+from models import TASK_SUCCESS_THRESHOLDS
 
 
 def _dedupe(values: List[str]) -> List[str]:
@@ -39,6 +40,11 @@ TASK_CANDIDATE_LIBRARY: Dict[str, List[str]] = {
         IMPROVED_MOLECULE_HINTS["multi_objective_designer"] + MULTI_OBJ_START_MOLECULES
     ),
 }
+CURRICULUM_TASKS = [
+    "lipinski_optimizer",
+    "qed_optimizer",
+    "multi_objective_designer",
+]
 
 OBSERVATION_DIM = 19
 
@@ -181,6 +187,109 @@ def train_agent(
     return model_path.with_suffix(".zip")
 
 
+def evaluate_policy(model: Any, task: str, episodes: int = 5, seed: int = 11) -> Dict[str, float]:
+    final_scores: List[float] = []
+    rewards: List[float] = []
+    successes = 0
+    unique_molecules: List[int] = []
+    unique_scaffolds: List[int] = []
+    steps_taken: List[int] = []
+
+    env = PharmaGymWrapper(task=task)
+    for episode_idx in range(episodes):
+        observation, _ = env.reset(seed=seed + episode_idx)
+        done = False
+        cumulative_reward = 0.0
+        steps = 0
+        while not done:
+            action, _ = model.predict(observation, deterministic=True)
+            action_value = int(action.item()) if hasattr(action, "item") else int(action)
+            observation, reward, terminated, truncated, _ = env.step(action_value)
+            cumulative_reward += float(reward)
+            done = bool(terminated or truncated)
+            steps += 1
+
+        state = env.env.get_state()
+        final_scores.append(float(state.best_score))
+        rewards.append(cumulative_reward)
+        unique_molecules.append(len(state.visited_molecules))
+        unique_scaffolds.append(state.unique_scaffolds)
+        steps_taken.append(steps)
+        if state.best_score >= TASK_SUCCESS_THRESHOLDS[task]:
+            successes += 1
+
+    return {
+        "episodes": float(episodes),
+        "mean_final_score": float(np.mean(final_scores)),
+        "mean_reward": float(np.mean(rewards)),
+        "success_rate": float(successes / max(episodes, 1)),
+        "mean_unique_molecules": float(np.mean(unique_molecules)),
+        "mean_unique_scaffolds": float(np.mean(unique_scaffolds)),
+        "mean_steps": float(np.mean(steps_taken)),
+    }
+
+
+def train_curriculum(
+    total_timesteps: int,
+    seed: int,
+    output_dir: Path,
+    device: str,
+    eval_episodes: int = 3,
+) -> Path:
+    from stable_baselines3 import PPO
+    from stable_baselines3.common.monitor import Monitor
+    from stable_baselines3.common.vec_env import DummyVecEnv
+
+    stage_timesteps = max(1, total_timesteps // len(CURRICULUM_TASKS))
+
+    def make_env(task: str):
+        return DummyVecEnv([lambda: Monitor(PharmaGymWrapper(task=task))])
+
+    model = PPO(
+        "MlpPolicy",
+        make_env(CURRICULUM_TASKS[0]),
+        verbose=1,
+        seed=seed,
+        learning_rate=3e-4,
+        n_steps=512,
+        batch_size=64,
+        gamma=0.99,
+        device=device,
+        tensorboard_log=str(output_dir / "tensorboard"),
+    )
+
+    stage_summaries: List[Dict[str, Any]] = []
+    for stage_index, task in enumerate(CURRICULUM_TASKS):
+        model.set_env(make_env(task))
+        model.learn(total_timesteps=stage_timesteps, progress_bar=True, reset_num_timesteps=(stage_index == 0))
+        metrics = evaluate_policy(model, task=task, episodes=eval_episodes, seed=seed + 100 * (stage_index + 1))
+        stage_summaries.append(
+            {
+                "task": task,
+                "timesteps": stage_timesteps,
+                "metrics": metrics,
+            }
+        )
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    model_path = output_dir / "ppo_pharmaos_curriculum"
+    model.save(str(model_path))
+    (output_dir / "ppo_pharmaos_curriculum.json").write_text(
+        json.dumps(
+            {
+                "mode": "curriculum",
+                "seed": seed,
+                "device": device,
+                "stages": stage_summaries,
+                "model_path": str(model_path.with_suffix(".zip")),
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    return model_path.with_suffix(".zip")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train a PPO baseline on the real PharmaOS environment.")
     parser.add_argument(
@@ -201,15 +310,35 @@ def main() -> None:
         default="trained_agents",
         help="Directory for trained model artifacts.",
     )
+    parser.add_argument(
+        "--curriculum",
+        action="store_true",
+        help="Train sequentially across easy, medium, and hard tasks.",
+    )
+    parser.add_argument(
+        "--eval-episodes",
+        type=int,
+        default=3,
+        help="Evaluation episodes per curriculum stage.",
+    )
     args = parser.parse_args()
 
-    model_path = train_agent(
-        task=args.task,
-        timesteps=args.timesteps,
-        seed=args.seed,
-        output_dir=Path(args.output_dir),
-        device=args.device,
-    )
+    if args.curriculum:
+        model_path = train_curriculum(
+            total_timesteps=args.timesteps,
+            seed=args.seed,
+            output_dir=Path(args.output_dir),
+            device=args.device,
+            eval_episodes=args.eval_episodes,
+        )
+    else:
+        model_path = train_agent(
+            task=args.task,
+            timesteps=args.timesteps,
+            seed=args.seed,
+            output_dir=Path(args.output_dir),
+            device=args.device,
+        )
     print(f"Saved PPO baseline to {model_path}")
 
 
