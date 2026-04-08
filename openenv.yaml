@@ -1,0 +1,118 @@
+name: pharma-os
+version: "2.0.0"
+description: >
+  PharmaOS: Drug Discovery Molecular Optimization RL Environment.
+  An AI agent acts as a medicinal chemist, iteratively modifying SMILES
+  strings to optimize drug-likeness using real computational chemistry (RDKit).
+  Features full ADMET profiling (solubility, BBB, hERG), PAINS filtering,
+  scaffold diversity tracking, and three scientifically rigorous tasks.
+
+author: Soumoditya Das
+email: soumoditt@gmail.com
+github: https://github.com/soumoditt-source/pharma-os
+
+tags:
+  - drug-discovery
+  - molecular-optimization
+  - cheminformatics
+  - rdkit
+  - admet
+  - real-world
+  - medicinal-chemistry
+  - openenv
+
+tasks:
+  - name: lipinski_optimizer
+    difficulty: easy
+    description: >
+      Modify a molecule to satisfy all 4 Lipinski Rule of Five criteria
+      for oral drug bioavailability (MW<500, LogP<5, HBD≤5, HBA≤10).
+    max_steps: 10
+    score_range: [0.0, 1.0]
+    success_threshold: 1.0
+    action_type: smiles_string
+    observation_keys:
+      - current_smiles
+      - properties
+      - feedback
+      - best_score
+      - history
+
+  - name: qed_optimizer
+    difficulty: medium
+    description: >
+      Maximize the QED (Quantitative Estimate of Drug-likeness) score.
+      Includes PAINS filter penalty (-0.20) for pan-assay interference.
+      Starting QED ≤ 0.30, target QED ≥ 0.75.
+    max_steps: 15
+    score_range: [0.0, 1.0]
+    success_threshold: 0.75
+    action_type: smiles_string
+    observation_keys:
+      - current_smiles
+      - properties
+      - admet
+      - feedback
+      - best_score
+
+  - name: multi_objective_designer
+    difficulty: hard
+    description: >
+      Multi-Parameter Optimization (MPO) across QED, synthetic accessibility
+      (SA score), fingerprint similarity to a known bioactive, and ADMET
+      properties (BBB penetration, aqueous solubility, hERG risk).
+      Composite = 0.35*QED + 0.25*SA_norm + 0.20*Similarity + 0.20*ADMET.
+    max_steps: 20
+    score_range: [0.0, 1.0]
+    success_threshold: 0.70
+    action_type: smiles_string
+    observation_keys:
+      - current_smiles
+      - properties
+      - admet
+      - feedback
+      - best_score
+      - history
+
+endpoints:
+  reset:
+    method: POST
+    path: /reset
+    body: '{"task": "lipinski_optimizer"}'
+  step:
+    method: POST
+    path: /step
+    body: '{"smiles": "CC(=O)Nc1ccc(cc1)O", "reasoning": "optional"}'
+  state:
+    method: GET
+    path: /state
+  health:
+    method: GET
+    path: /health
+  tasks:
+    method: GET
+    path: /tasks
+  websocket:
+    protocol: WS
+    path: /ws
+  docs:
+    method: GET
+    path: /docs
+  web:
+    method: GET
+    path: /web
+
+hardware:
+  min_vcpu: 2
+  min_memory_gb: 4
+  gpu_required: false
+  recommended: cpu-basic
+
+space:
+  sdk: docker
+  app_port: 7860
+  suggested_hardware: cpu-basic
+  environment_variables:
+    PORT: "7860"
+    WORKERS: "2"
+    PHARMAO_TASK: "lipinski_optimizer"

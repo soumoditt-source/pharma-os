@@ -1,0 +1,17 @@
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.venv/
+.huggingface/
+.env
+.env.*
+.server.pid
+.server.out.log
+.server.err.log
+.coverage
+htmlcov/
+trained_agents/
+trained_agents_colab/
+*.pyc
+*.pyo
+*.pyd
