@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 
 from openai import OpenAI
 from server.compound_lookup import resolve_compound_query
@@ -13,7 +13,7 @@ try:
     from sklearn.metrics.pairwise import cosine_similarity
 
     SKLEARN_AVAILABLE = True
-except ImportError:
+except Exception:
     SKLEARN_AVAILABLE = False
 
 
@@ -30,6 +30,7 @@ class ChainOfThought:
     reasoning: str
     recommendation: str
     formula: Optional[str] = None
+    provider: Optional[str] = None
 
     def to_dict(self):
         return asdict(self)
@@ -156,15 +157,41 @@ class PharmaAgent:
     """
 
     def __init__(self):
+        self.provider_mode = os.getenv("LLM_PROVIDER", "auto").strip().lower()
         self.hf_token = os.getenv("HF_TOKEN")
         self.api_base_url = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
         self.model_name = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-        self.client = (
-            OpenAI(base_url=self.api_base_url, api_key=self.hf_token)
-            if self.hf_token
-            else None
-        )
+        self.mistral_api_key = os.getenv("MISTRAL_API_KEY")
+        self.mistral_api_base_url = os.getenv("MISTRAL_API_BASE_URL", "https://api.mistral.ai/v1")
+        self.mistral_model_name = os.getenv("MISTRAL_MODEL_NAME", "mistral-small-latest")
+        self.llm_backends = self._build_llm_backends()
         self._init_rag()
+
+    def _build_llm_backends(self) -> List[dict]:
+        if self.provider_mode in {"off", "none", "disabled"}:
+            return []
+
+        backends: List[dict] = []
+
+        if self.provider_mode in {"auto", "huggingface", "hf"} and self.hf_token:
+            backends.append(
+                {
+                    "provider": "huggingface-router",
+                    "client": OpenAI(base_url=self.api_base_url, api_key=self.hf_token),
+                    "model": self.model_name,
+                }
+            )
+
+        if self.provider_mode in {"auto", "mistral"} and self.mistral_api_key:
+            backends.append(
+                {
+                    "provider": "mistral",
+                    "client": OpenAI(base_url=self.mistral_api_base_url, api_key=self.mistral_api_key),
+                    "model": self.mistral_model_name,
+                }
+            )
+
+        return backends
 
     def _init_rag(self):
         self.corpus = PHARMA_RAG_CORPUS
@@ -270,40 +297,46 @@ class PharmaAgent:
         return None
 
     def _llm_oracle(self, query: str, context: str) -> Optional[ChainOfThought]:
-        if self.client is None:
+        if not self.llm_backends:
             return None
 
         prompt = (
             "You are PharmaAgent, a concise chemistry, pharmacology, and drug-discovery copilot.\n"
-            "Respond with short, practical guidance grounded in chemistry, medicinal chemistry, "
-            "and when relevant Lipinski, QED, SA, and ADMET.\n\n"
+            "Respond with practical, trustworthy guidance grounded in chemistry, medicinal chemistry, "
+            "and when relevant Lipinski, QED, SA, and ADMET.\n"
+            "Use plain, human language and explain tradeoffs clearly without sounding robotic.\n\n"
             f"Context:\n{context}\n\n"
             f"User query:\n{query}"
         )
 
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model_name,
-                temperature=0.2,
-                max_tokens=150,
-                timeout=4.0,
-                messages=[
-                    {"role": "system", "content": "You are a precise medicinal chemistry assistant."},
-                    {"role": "system", "content": "When a common product name is not a single molecule, explain that clearly and offer representative compounds."},
-                    {"role": "user", "content": prompt},
-                ],
-            )
-            text = (response.choices[0].message.content or "").strip()
-            if text:
-                return ChainOfThought(
-                    level=ThinkingLevel.LLM.value,
-                    confidence=0.85,
-                    reasoning="LLM Oracle returned a model-backed chemistry suggestion via the OpenAI client.",
-                    recommendation=text,
-                    formula="LLM Generative Priority",
+        for backend in self.llm_backends:
+            try:
+                response = backend["client"].chat.completions.create(
+                    model=backend["model"],
+                    temperature=0.2,
+                    max_tokens=180,
+                    timeout=6.0,
+                    messages=[
+                        {"role": "system", "content": "You are a precise medicinal chemistry assistant."},
+                        {"role": "system", "content": "When a common product name is not a single molecule, explain that clearly and offer representative compounds."},
+                        {"role": "user", "content": prompt},
+                    ],
                 )
-        except Exception:
-            return None
+                text = (response.choices[0].message.content or "").strip()
+                if text:
+                    return ChainOfThought(
+                        level=ThinkingLevel.LLM.value,
+                        confidence=0.85,
+                        reasoning=(
+                            "LLM Oracle returned a model-backed chemistry suggestion via the "
+                            f"{backend['provider']} backend."
+                        ),
+                        recommendation=text,
+                        formula="LLM Generative Priority",
+                        provider=backend["provider"],
+                    )
+            except Exception:
+                continue
         return None
 
     def get_reasoning_trace(self, query: str, context: str = "") -> ChainOfThought:

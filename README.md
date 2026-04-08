@@ -28,6 +28,34 @@ Built by Team Fullstack Shinobi:
 - Leader and developer: Soumoditya Das
 - Member: Rajashri Choudhuri
 
+## Architecture Visual
+
+```mermaid
+flowchart LR
+    A[Agent or Judge] --> B[inference.py]
+    A --> C[FastAPI Runtime]
+    B --> C
+    C --> D[PharmaEnvironment]
+    D --> E[Reward and Task Scoring]
+    D --> F[RDKit or Deterministic Stub Fallback]
+    D --> G[PyTorch Solubility Ensemble]
+    C --> H[Dashboard and Chat APIs]
+    H --> I[Compound Resolver]
+    H --> J[Provider-Routed LLM Copilot]
+    J --> K[Hugging Face Router]
+    J --> L[Mistral API]
+```
+
+```mermaid
+flowchart TD
+    A[reset] --> B[Seed task and starting molecule]
+    B --> C[state]
+    C --> D[step with proposed SMILES]
+    D --> E[Property computation]
+    E --> F[Dense reward shaping]
+    F --> G[done or continue]
+```
+
 ## Why this environment is real-world
 
 PharmaOS models work that medicinal chemists actually do during hit-to-lead and lead optimization:
@@ -175,6 +203,14 @@ Dashboard:
 http://127.0.0.1:8000/web
 ```
 
+Live deployment:
+
+```text
+Space page: https://huggingface.co/spaces/soumod000575/pharma-os
+Runtime host: https://soumod000575-pharma-os.hf.space
+Dashboard: https://soumod000575-pharma-os.hf.space/web
+```
+
 ## Inference script
 
 The hackathon baseline script is [inference.py](inference.py).
@@ -207,6 +243,21 @@ export HF_TOKEN=your_token_here
 export PHARMAO_URL=http://127.0.0.1:8000
 python inference.py
 ```
+
+## Chat Copilot Providers
+
+The dashboard copilot in `POST /api/chat` and `POST /api/reasoning_trace` supports a provider-routed setup:
+
+- Hugging Face Router via `HF_TOKEN`, `API_BASE_URL`, and `MODEL_NAME`
+- Mistral failover via `MISTRAL_API_KEY`, `MISTRAL_API_BASE_URL`, and `MISTRAL_MODEL_NAME`
+- `LLM_PROVIDER=auto|huggingface|mistral|off`
+
+Default behavior:
+
+- `auto`: try Hugging Face first, then Mistral, then fall back to local RAG and compound resolution
+- `huggingface`: use only the HF Router backend
+- `mistral`: use only the Mistral backend
+- `off`: disable external LLM calls and keep the copilot fully local
 
 ## Verified local baseline
 

@@ -33,18 +33,22 @@ try:
         Draw, rdFingerprintGenerator
     )
     from rdkit.Chem.rdMolDescriptors import CalcTPSA, CalcFractionCSP3
-    from rdkit.Chem.FilterCatalog import FilterCatalog, FilterCatalogParams
     from rdkit.Chem.Scaffolds import MurckoScaffold
     RDKIT_AVAILABLE = True
-
-    # Build PAINS catalog once at module level
-    _pains_params = FilterCatalogParams()
-    _pains_params.AddCatalog(FilterCatalogParams.FilterCatalogs.PAINS)
-    PAINS_CATALOG = FilterCatalog(_pains_params)
-
 except ImportError:
     RDKIT_AVAILABLE = False
     PAINS_CATALOG = None
+
+if RDKIT_AVAILABLE:
+    try:
+        from rdkit.Chem.FilterCatalog import FilterCatalog, FilterCatalogParams
+
+        # Build PAINS catalog once at module level.
+        _pains_params = FilterCatalogParams()
+        _pains_params.AddCatalog(FilterCatalogParams.FilterCatalogs.PAINS)
+        PAINS_CATALOG = FilterCatalog(_pains_params)
+    except ImportError:
+        PAINS_CATALOG = None
 
 import sys
 import os
@@ -60,7 +64,12 @@ from models import (
     TASK_SUCCESS_THRESHOLDS,
 )
 from server.sa_score import compute_sa_score, normalize_sa_score, sa_score_to_label
-from server.ml_engine import get_ml_engine
+
+try:
+    from server.ml_engine import get_ml_engine
+except Exception:
+    def get_ml_engine():
+        raise RuntimeError("ML engine unavailable")
 
 
 # ─── MOLECULE BANKS ──────────────────────────────────────────────────────────
