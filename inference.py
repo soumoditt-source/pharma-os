@@ -20,14 +20,14 @@ from server.environment import (
 
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-HF_TOKEN = os.getenv("HF_TOKEN")
+API_KEY = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 PHARMAO_URL = os.getenv("PHARMAO_URL", "http://localhost:8000").rstrip("/")
 
-if HF_TOKEN is None:
-    raise ValueError("HF_TOKEN environment variable is required")
+if API_KEY is None:
+    raise ValueError("API_KEY environment variable is required (HF_TOKEN is accepted as a backward-compatible fallback)")
 
-client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
 BENCHMARK = "pharma-os"
 TASKS = [

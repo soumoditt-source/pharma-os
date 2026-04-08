@@ -8,12 +8,25 @@ from contextlib import redirect_stdout
 
 
 def _load_inference(monkeypatch):
-    monkeypatch.setenv("HF_TOKEN", "test-token")
+    monkeypatch.setenv("API_KEY", "test-token")
     monkeypatch.setenv("API_BASE_URL", "http://127.0.0.1:9/v1")
     monkeypatch.setenv("MODEL_NAME", "test-model")
     monkeypatch.setenv("PHARMAO_URL", "http://127.0.0.1:8000")
     sys.modules.pop("inference", None)
     return importlib.import_module("inference")
+
+
+def test_inference_accepts_hf_token_fallback(monkeypatch):
+    monkeypatch.delenv("API_KEY", raising=False)
+    monkeypatch.setenv("HF_TOKEN", "legacy-token")
+    monkeypatch.setenv("API_BASE_URL", "http://127.0.0.1:9/v1")
+    monkeypatch.setenv("MODEL_NAME", "test-model")
+    monkeypatch.setenv("PHARMAO_URL", "http://127.0.0.1:8000")
+    sys.modules.pop("inference", None)
+
+    inference = importlib.import_module("inference")
+
+    assert inference.API_KEY == "legacy-token"
 
 
 def test_run_task_emits_score_in_end_line(monkeypatch):

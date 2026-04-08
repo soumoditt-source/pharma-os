@@ -238,8 +238,10 @@ Required environment variables:
   default: `https://router.huggingface.co/v1`
 - `MODEL_NAME`
   default: `Qwen/Qwen2.5-72B-Instruct`
+- `API_KEY`
+  required in judge/validator environments
 - `HF_TOKEN`
-  required
+  optional backward-compatible fallback for local runs
 - `LOCAL_IMAGE_NAME`
   optional: reserved for Docker-image based runners
 - `PHARMAO_URL`
@@ -257,7 +259,7 @@ Example:
 ```bash
 export API_BASE_URL=https://router.huggingface.co/v1
 export MODEL_NAME=Qwen/Qwen2.5-72B-Instruct
-export HF_TOKEN=your_token_here
+export API_KEY=your_token_here
 export PHARMAO_URL=http://127.0.0.1:8000
 python inference.py
 ```

@@ -175,6 +175,7 @@ def main() -> None:
 
         if not args.skip_inference:
             inference_env = os.environ.copy()
+            inference_env.setdefault("API_KEY", "dummy")
             inference_env.setdefault("HF_TOKEN", "dummy")
             inference_env.setdefault("API_BASE_URL", "http://127.0.0.1:9/v1")
             inference_env.setdefault("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
