@@ -35,7 +35,12 @@ from models import (
     PharmaAction, PharmaObservation, PharmaState,
     AVAILABLE_TASKS, TASK_DESCRIPTIONS, TASK_SUCCESS_THRESHOLDS,
 )
-from server.environment import PharmaEnvironment, IMPROVED_MOLECULE_HINTS
+from server.environment import (
+    DRAW_AVAILABLE,
+    RDKIT_AVAILABLE,
+    IMPROVED_MOLECULE_HINTS,
+    PharmaEnvironment,
+)
 from server.agent import agent as pharma_agent
 from server.compound_lookup import resolve_compound_query
 
@@ -111,6 +116,17 @@ def build_agent_context(env: PharmaEnvironment) -> str:
         f"Properties: {props_payload}\n"
         f"Task: {task_name}"
     )
+
+
+def _runtime_status_payload() -> Dict[str, Any]:
+    return {
+        "rdkit_available": RDKIT_AVAILABLE,
+        "draw_available": DRAW_AVAILABLE,
+        "llm_provider_mode": pharma_agent.provider_mode,
+        "llm_backends": [backend["provider"] for backend in pharma_agent.llm_backends],
+        "default_task": _DEFAULT_TASK,
+        "web_interface": True,
+    }
 
 
 def _serialize_observation(obs: PharmaObservation) -> Dict[str, Any]:
@@ -201,6 +217,7 @@ async def health() -> Dict[str, Any]:
         "name": _APP_NAME,
         "version": _APP_VERSION,
         "tasks": str(len(AVAILABLE_TASKS)),
+        **_runtime_status_payload(),
     }
 
 
@@ -225,6 +242,12 @@ async def schema() -> Dict[str, Any]:
         "observation": PharmaObservation.model_json_schema(),
         "state": PharmaState.model_json_schema(),
     }
+
+
+@app.get("/api/runtime_status")
+async def runtime_status() -> Dict[str, Any]:
+    """Expose non-secret runtime wiring for live validation and debugging."""
+    return _runtime_status_payload()
 
 
 @app.post("/mcp")

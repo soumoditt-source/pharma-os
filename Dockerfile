@@ -62,7 +62,7 @@ USER pharmao
 # ---------------------------------------------------------------------------
 ENV PORT=7860
 ENV HOST=0.0.0.0
-ENV WORKERS=2
+ENV WORKERS=1
 ENV PHARMAO_TASK=lipinski_optimizer
 ENV ENABLE_WEB_INTERFACE=true
 ENV PYTHONUNBUFFERED=1

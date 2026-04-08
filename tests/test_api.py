@@ -42,6 +42,7 @@ def test_runtime_compatibility_endpoints_exist():
 
     metadata_response = client.get("/metadata")
     schema_response = client.get("/schema")
+    runtime_response = client.get("/api/runtime_status")
     mcp_response = client.post("/mcp", json={})
 
     assert metadata_response.status_code == 200
@@ -50,6 +51,10 @@ def test_runtime_compatibility_endpoints_exist():
     schema_payload = schema_response.json()
     assert schema_response.status_code == 200
     assert {"action", "observation", "state"} <= set(schema_payload.keys())
+
+    runtime_payload = runtime_response.json()
+    assert runtime_response.status_code == 200
+    assert {"rdkit_available", "draw_available", "llm_provider_mode", "llm_backends"} <= set(runtime_payload.keys())
 
     mcp_payload = mcp_response.json()
     assert mcp_response.status_code == 200

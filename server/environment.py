@@ -28,16 +28,20 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 # ─── RDKit imports ───────────────────────────────────────────────────────────
 try:
     from rdkit import Chem, DataStructs
-    from rdkit.Chem import (
-        Descriptors, QED, rdMolDescriptors,
-        Draw, rdFingerprintGenerator
-    )
+    from rdkit.Chem import Descriptors, QED, rdMolDescriptors, rdFingerprintGenerator
     from rdkit.Chem.rdMolDescriptors import CalcTPSA, CalcFractionCSP3
     from rdkit.Chem.Scaffolds import MurckoScaffold
     RDKIT_AVAILABLE = True
 except ImportError:
     RDKIT_AVAILABLE = False
     PAINS_CATALOG = None
+
+try:
+    from rdkit.Chem.Draw import rdMolDraw2D
+    DRAW_AVAILABLE = True
+except ImportError:
+    rdMolDraw2D = None
+    DRAW_AVAILABLE = False
 
 if RDKIT_AVAILABLE:
     try:
@@ -161,10 +165,9 @@ IMPROVED_MOLECULE_HINTS = {
 
 def render_mol_svg(mol, size=(300, 200)) -> Optional[str]:
     """Render molecule as SVG string using RDKit."""
-    if not RDKIT_AVAILABLE or mol is None:
+    if not RDKIT_AVAILABLE or not DRAW_AVAILABLE or mol is None:
         return None
     try:
-        from rdkit.Chem.Draw import rdMolDraw2D
         drawer = rdMolDraw2D.MolDraw2DSVG(size[0], size[1])
         drawer.drawOptions().addStereoAnnotation = True
         drawer.drawOptions().addAtomIndices = False

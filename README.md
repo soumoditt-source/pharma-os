@@ -259,6 +259,11 @@ Default behavior:
 - `mistral`: use only the Mistral backend
 - `off`: disable external LLM calls and keep the copilot fully local
 
+Runtime wiring can be inspected without exposing secrets via:
+
+- `GET /api/runtime_status`
+- `GET /health`
+
 ## Verified local baseline
 
 Verified on April 8, 2026 by running:
@@ -294,7 +299,7 @@ For Hugging Face Spaces:
 
 Suggested environment variables for the Space:
 - `PORT=7860`
-- `WORKERS=2`
+- `WORKERS=1`
 - `PHARMAO_TASK=lipinski_optimizer`
 
 ## Training and Colab T4

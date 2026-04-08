@@ -30,6 +30,8 @@ from server.environment import (
     _compute_bbb_score,
     _compute_herg_risk,
     _check_pains,
+    render_mol_svg,
+    DRAW_AVAILABLE,
     RDKIT_AVAILABLE,
 )
 
@@ -348,6 +350,21 @@ class TestObservationSchema:
         json_str = json.dumps(data)
         assert isinstance(json_str, str)
         assert len(json_str) > 100
+
+
+@pytest.mark.skipif(not RDKIT_AVAILABLE, reason="RDKit not installed")
+def test_render_mol_svg_gracefully_handles_missing_draw(monkeypatch):
+    from rdkit import Chem
+
+    mol = Chem.MolFromSmiles(PARACETAMOL)
+    assert mol is not None
+
+    if DRAW_AVAILABLE:
+        assert render_mol_svg(mol) is not None
+
+    monkeypatch.setattr(environment_module, "DRAW_AVAILABLE", False)
+    monkeypatch.setattr(environment_module, "rdMolDraw2D", None)
+    assert render_mol_svg(mol) is None
 
 
 # ─── Integration: Full Episode ────────────────────────────────────────────────
