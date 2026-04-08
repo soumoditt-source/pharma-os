@@ -170,6 +170,24 @@ pharma-os/
 
 ## Quick start
 
+### Judge quick run
+
+If you want the fastest judge-style verification path from a clean checkout:
+
+```bash
+python -m pip install -r requirements.txt
+python -m pytest -q
+python -m openenv.cli validate .
+python scripts/preflight.py
+```
+
+That single preflight flow:
+- starts the runtime
+- validates `/reset`, `/step`, `/state`, and compatibility endpoints
+- runs `inference.py`
+- checks the structured `[START]`, `[STEP]`, `[END]` logs
+- opens the dashboard endpoint at `/web`
+
 ### One-command launch on Windows
 
 From PowerShell in the project root:
@@ -263,6 +281,14 @@ Runtime wiring can be inspected without exposing secrets via:
 
 - `GET /api/runtime_status`
 - `GET /health`
+
+The molecule viewer is also resilient in deployment:
+
+- primary 2D render: server-provided RDKit SVG
+- backup 2D render: RDKit-generated mol block rendered in-browser
+- final 2D fallback: free PubChem PNG for recognizable public structures
+- primary 3D render: RDKit ETKDG conformer coordinates
+- backup 3D render: RDKit 2D coordinates projected into the live 3D viewer
 
 ## Verified local baseline
 

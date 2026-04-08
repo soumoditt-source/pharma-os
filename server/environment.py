@@ -37,6 +37,13 @@ except ImportError:
     PAINS_CATALOG = None
 
 try:
+    from rdkit.Chem import AllChem
+    ALLCHEM_AVAILABLE = True
+except ImportError:
+    AllChem = None
+    ALLCHEM_AVAILABLE = False
+
+try:
     from rdkit.Chem.Draw import rdMolDraw2D
     DRAW_AVAILABLE = True
 except ImportError:
@@ -177,6 +184,48 @@ def render_mol_svg(mol, size=(300, 200)) -> Optional[str]:
         return svg
     except Exception:
         return None
+
+
+def generate_structure_payload(smiles: str) -> Optional[Dict[str, Any]]:
+    """Build deterministic 2D and 3D structure payloads for the web UI."""
+    if not RDKIT_AVAILABLE:
+        return None
+
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return None
+
+    payload: Dict[str, Any] = {
+        "smiles": Chem.MolToSmiles(mol),
+        "molblock_2d": None,
+        "molblock_3d": None,
+        "structure_source": "rdkit",
+    }
+
+    if ALLCHEM_AVAILABLE:
+        try:
+            mol2d = Chem.Mol(mol)
+            AllChem.Compute2DCoords(mol2d)
+            payload["molblock_2d"] = Chem.MolToMolBlock(mol2d)
+        except Exception:
+            payload["molblock_2d"] = None
+
+        try:
+            mol3d = Chem.AddHs(Chem.Mol(mol))
+            params = AllChem.ETKDGv3()
+            params.randomSeed = 0xF00D
+            params.useRandomCoords = False
+            status = AllChem.EmbedMolecule(mol3d, params)
+            if status == 0:
+                try:
+                    AllChem.UFFOptimizeMolecule(mol3d, maxIters=200)
+                except Exception:
+                    pass
+                payload["molblock_3d"] = Chem.MolToMolBlock(Chem.RemoveHs(mol3d))
+        except Exception:
+            payload["molblock_3d"] = None
+
+    return payload
 
 
 def _estimate_logS(mol, logp: float, mw: float) -> float:

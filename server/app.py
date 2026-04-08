@@ -38,6 +38,7 @@ from models import (
 from server.environment import (
     DRAW_AVAILABLE,
     RDKIT_AVAILABLE,
+    generate_structure_payload,
     IMPROVED_MOLECULE_HINTS,
     PharmaEnvironment,
 )
@@ -366,6 +367,21 @@ async def reasoning_trace(body: Dict[str, Any]) -> Dict[str, Any]:
 async def compound_lookup(q: str) -> Dict[str, Any]:
     """Resolve exact compounds, aliases, and broad product classes into validated compounds."""
     return resolve_compound_query(q)
+
+
+@app.get("/api/structure")
+async def structure(smiles: str) -> Dict[str, Any]:
+    """Return RDKit-derived 2D and 3D structure payloads for the web client."""
+    payload = generate_structure_payload(smiles)
+    if payload is None:
+        return {
+            "smiles": smiles,
+            "molblock_2d": None,
+            "molblock_3d": None,
+            "structure_source": "unavailable",
+            "error": "invalid_smiles_or_rdkit_unavailable",
+        }
+    return payload
 
 
 # ─── WebSocket Endpoint ───────────────────────────────────────────────────────

@@ -1548,6 +1548,106 @@
     }
 
     // ── SMILES Branch-Aware Parser (fallback when no SVG) ─────────────────────────
+    function parseMolBlock(molblock) {
+      if (!molblock) return null;
+      try {
+        const lines = molblock.replace(/\r/g, '').split('\n');
+        if (lines.length < 4) return null;
+        const counts = lines[3] || '';
+        const atomCount = parseInt(counts.slice(0, 3), 10);
+        const bondCount = parseInt(counts.slice(3, 6), 10);
+        if (!Number.isFinite(atomCount) || atomCount < 1) return null;
+        const atoms = [];
+        const bonds = [];
+        for (let i = 0; i < atomCount; i++) {
+          const line = lines[4 + i] || '';
+          atoms.push({
+            x: parseFloat(line.slice(0, 10)) || 0,
+            y: parseFloat(line.slice(10, 20)) || 0,
+            z: parseFloat(line.slice(20, 30)) || 0,
+            symbol: (line.slice(31, 34).trim() || 'C'),
+          });
+        }
+        for (let i = 0; i < bondCount; i++) {
+          const line = lines[4 + atomCount + i] || '';
+          const a = (parseInt(line.slice(0, 3), 10) || 0) - 1;
+          const b = (parseInt(line.slice(3, 6), 10) || 0) - 1;
+          const order = parseInt(line.slice(6, 9), 10) || 1;
+          if (a >= 0 && b >= 0 && a !== b) bonds.push({ a, b, order });
+        }
+        return atoms.length ? { atoms, bonds } : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function render2DFromMolBlock(molblock) {
+      const parsed = parseMolBlock(molblock);
+      const container = document.getElementById('svg-container');
+      if (!container || !parsed || !parsed.atoms.length) return false;
+
+      const width = 320, height = 218, margin = 24;
+      const xs = parsed.atoms.map(a => a.x);
+      const ys = parsed.atoms.map(a => a.y);
+      const minX = Math.min(...xs), maxX = Math.max(...xs);
+      const minY = Math.min(...ys), maxY = Math.max(...ys);
+      const spanX = Math.max(maxX - minX, 0.01);
+      const spanY = Math.max(maxY - minY, 0.01);
+      const scale = Math.min((width - margin * 2) / spanX, (height - margin * 2) / spanY);
+      const projectX = x => ((x - minX) * scale + margin);
+      const projectY = y => ((maxY - y) * scale + margin);
+      const colors = {
+        C: '#cbd5e1', N: '#38bdf8', O: '#f87171', S: '#fbbf24', F: '#6ee7b7',
+        Cl: '#4ade80', Br: '#fb923c', P: '#f59e0b', I: '#c084fc', Si: '#e2e8f0'
+      };
+
+      const bondSvg = parsed.bonds.map(({ a, b, order }) => {
+        const start = parsed.atoms[a], end = parsed.atoms[b];
+        if (!start || !end) return '';
+        const x1 = projectX(start.x), y1 = projectY(start.y);
+        const x2 = projectX(end.x), y2 = projectY(end.y);
+        const dx = x2 - x1, dy = y2 - y1;
+        const len = Math.hypot(dx, dy) || 1;
+        const offX = (-dy / len) * 3.2;
+        const offY = (dx / len) * 3.2;
+        if (order >= 3) {
+          return [
+            `<line x1="${x1 - offX}" y1="${y1 - offY}" x2="${x2 - offX}" y2="${y2 - offY}" stroke="#93c5fd" stroke-width="2.1" stroke-linecap="round" />`,
+            `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#e2e8f0" stroke-width="2.1" stroke-linecap="round" />`,
+            `<line x1="${x1 + offX}" y1="${y1 + offY}" x2="${x2 + offX}" y2="${y2 + offY}" stroke="#93c5fd" stroke-width="2.1" stroke-linecap="round" />`,
+          ].join('');
+        }
+        if (order === 2) {
+          return [
+            `<line x1="${x1 - offX}" y1="${y1 - offY}" x2="${x2 - offX}" y2="${y2 - offY}" stroke="#93c5fd" stroke-width="2.1" stroke-linecap="round" />`,
+            `<line x1="${x1 + offX}" y1="${y1 + offY}" x2="${x2 + offX}" y2="${y2 + offY}" stroke="#e2e8f0" stroke-width="2.1" stroke-linecap="round" />`,
+          ].join('');
+        }
+        return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#e2e8f0" stroke-width="2.2" stroke-linecap="round" />`;
+      }).join('');
+
+      const atomSvg = parsed.atoms.map(atom => {
+        const x = projectX(atom.x), y = projectY(atom.y);
+        const symbol = atom.symbol || 'C';
+        const fill = colors[symbol] || '#e2e8f0';
+        return `
+          <g>
+            <circle cx="${x}" cy="${y}" r="10" fill="rgba(9,15,28,0.92)" stroke="${fill}" stroke-width="1.3" />
+            <text x="${x}" y="${y + 3.6}" text-anchor="middle" font-size="9.5" font-weight="700" fill="${fill}" font-family="Inter, sans-serif">${symbol}</text>
+          </g>
+        `;
+      }).join('');
+
+      container.innerHTML = `
+        <svg viewBox="0 0 ${width} ${height}" width="100%" height="218" role="img" aria-label="2D molecular structure">
+          <rect x="0" y="0" width="${width}" height="${height}" rx="12" fill="rgba(8,12,22,0.65)" />
+          ${bondSvg}
+          ${atomSvg}
+        </svg>
+      `;
+      return true;
+    }
+
     function parseSMILESFallback(smi) {
       if (!smi || smi === '—') return null;
       const atoms = [], bonds = [];
@@ -1634,11 +1734,23 @@
       T3.molGroup = new THREE.Group(); T3.scene.add(T3.molGroup);
       if (!atoms || !atoms.length) return;
       // Normalize
-      const xs = atoms.map(a => a.x), ys = atoms.map(a => a.y);
+      const xs = atoms.map(a => a.x), ys = atoms.map(a => a.y), zs = atoms.map(a => a.z || 0);
       const cx = (Math.max(...xs) + Math.min(...xs)) / 2, cy = (Math.max(...ys) + Math.min(...ys)) / 2;
-      const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), 0.01);
+      const cz = (Math.max(...zs) + Math.min(...zs)) / 2;
+      const hasNativeZ = zs.some(z => Math.abs(z) > 1e-3);
+      const span = Math.max(
+        Math.max(...xs) - Math.min(...xs),
+        Math.max(...ys) - Math.min(...ys),
+        hasNativeZ ? (Math.max(...zs) - Math.min(...zs)) : 0,
+        0.01,
+      );
       const sc = 5.0 / span;
-      const na = atoms.map((a, i) => ({ ...a, nx: (a.x - cx) * sc, ny: -(a.y - cy) * sc, nz: (a.z || 0) * sc + Math.sin(i * 1.1) * 0.22 }));
+      const na = atoms.map((a, i) => ({
+        ...a,
+        nx: (a.x - cx) * sc,
+        ny: -(a.y - cy) * sc,
+        nz: hasNativeZ ? ((a.z || 0) - cz) * sc : Math.sin(i * 1.1) * 0.22,
+      }));
       // Bonds first (hidden)
       const bObjs = [];
       bonds.forEach(([ai, bi]) => {
@@ -1697,7 +1809,26 @@
     }
 
     // ── DUAL 2D+3D UPDATE ─────────────────────────────────────────────────────────
-    function update3DFromObs(obs) {
+    const STRUCTURE_CACHE = new Map();
+    let structureRenderSeq = 0;
+
+    function _showStructurePlaceholder(message) {
+      const svgEl = document.getElementById('svg-container');
+      if (svgEl) svgEl.innerHTML = `<div class="no-struct-txt">${message}</div>`;
+    }
+
+    async function fetchStructurePayload(smiles) {
+      if (!smiles || smiles === 'â€”') return null;
+      if (!smiles || smiles === '\u2014') return null;
+      if (STRUCTURE_CACHE.has(smiles)) return STRUCTURE_CACHE.get(smiles);
+      const response = await fetch(`${BASE}/api/structure?smiles=${encodeURIComponent(smiles)}`);
+      if (!response.ok) throw new Error(`structure lookup failed (${response.status})`);
+      const payload = await response.json();
+      STRUCTURE_CACHE.set(smiles, payload);
+      return payload;
+    }
+
+    async function update3DFromObs(obs) {
       const svgEl = document.getElementById('svg-container');
       if (svgEl && obs && obs.mol_svg) {
         svgEl.innerHTML = obs.mol_svg;
@@ -1706,6 +1837,76 @@
       }
       if (obs && obs.mol_svg) { const mol = parseSVGMolecule(obs.mol_svg); if (mol && mol.atoms.length >= 2) { buildMol3D(mol.atoms, mol.bonds, false); return; } }
       if (obs && obs.current_smiles) update3DFromSMILES(obs.current_smiles);
+    }
+
+    function showPubChem2D(smiles, reasonText) {
+      const svgEl = document.getElementById('svg-container');
+      if (!svgEl || !smiles) return;
+      const imgUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/${encodeURIComponent(smiles)}/PNG?image_size=large`;
+      svgEl.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;width:100%">
+          <img src="${imgUrl}" alt="PubChem 2D structure" style="max-width:100%;max-height:210px;border-radius:10px;background:rgba(8,12,22,0.75);padding:8px"
+               onerror="this.replaceWith(Object.assign(document.createElement('div'), { className: 'no-struct-txt', textContent: 'PubChem image fallback unavailable for this SMILES.' }))" />
+          <div class="no-struct-txt">${reasonText}</div>
+        </div>
+      `;
+    }
+
+    async function renderStructureFromSMILES(smiles) {
+      if (!smiles || smiles === '\u2014') return;
+      const seq = ++structureRenderSeq;
+      _showStructurePlaceholder('Generating structure...');
+      try {
+        const structure = await fetchStructurePayload(smiles);
+        if (seq !== structureRenderSeq) return;
+        if (structure?.molblock_2d) render2DFromMolBlock(structure.molblock_2d);
+        const mol3d = structure?.molblock_3d ? parseMolBlock(structure.molblock_3d) : null;
+        if (mol3d && mol3d.atoms.length >= 2) {
+          buildMol3D(mol3d.atoms, mol3d.bonds.map(b => [b.a, b.b]), false);
+          const st = document.getElementById('build-status');
+          if (st) st.textContent = `RDKit 3D • ${mol3d.atoms.length} atoms`;
+          return;
+        }
+        const mol2d = structure?.molblock_2d ? parseMolBlock(structure.molblock_2d) : null;
+        if (mol2d && mol2d.atoms.length >= 2) {
+          buildMol3D(mol2d.atoms, mol2d.bonds.map(b => [b.a, b.b]), false);
+          const st = document.getElementById('build-status');
+          if (st) st.textContent = `RDKit 2D-derived view • ${mol2d.atoms.length} atoms`;
+          return;
+        }
+      } catch (e) {
+        console.warn('RDKit structure fetch failed', e);
+      }
+
+      const mol = parseSMILESFallback(smiles);
+      if (mol) {
+        buildMol3D(mol.atoms, mol.bonds, false);
+        showPubChem2D(smiles, 'Showing free PubChem 2D fallback while keeping the local 3D model active.');
+      } else {
+        showPubChem2D(smiles, 'Using free PubChem 2D fallback for this structure.');
+      }
+    }
+
+    async function renderStructureFromObs(obs) {
+      const smiles = obs && obs.current_smiles;
+      if (!smiles || smiles === '\u2014') {
+        _showStructurePlaceholder('No structure loaded yet.');
+        return;
+      }
+
+      const svgEl = document.getElementById('svg-container');
+      if (svgEl && obs && obs.mol_svg) {
+        svgEl.innerHTML = obs.mol_svg;
+        const svg = svgEl.querySelector('svg');
+        if (svg) {
+          svg.style.width = '100%';
+          svg.style.height = 'auto';
+          svg.style.maxHeight = '218px';
+          svg.style.filter = 'drop-shadow(0 4px 16px rgba(0,0,0,0.7))';
+        }
+      }
+
+      await renderStructureFromSMILES(smiles);
     }
 
     function update3DFromSMILES(smiles) {
@@ -1769,7 +1970,7 @@ to your fingertips. Click New Episode to begin your journey.`;
             }
             document.getElementById('smiles-input').value = smilesStr;
             log(`💊 Loaded: ${p.IUPACName || q}\nSMILES: ${smilesStr}`, 'info-entry');
-            update3DFromSMILES(smilesStr);
+            renderStructureFromSMILES(smilesStr);
           };
           res.appendChild(div);
         });
@@ -1827,7 +2028,7 @@ to your fingertips. Click New Episode to begin your journey.`;
             }
             document.getElementById('smiles-input').value = smilesStr;
             log(`Loaded: ${p.name || q}\nSMILES: ${smilesStr}`, 'info-entry');
-            update3DFromSMILES(smilesStr);
+            renderStructureFromSMILES(smilesStr);
           };
           res.appendChild(div);
         });
@@ -1858,7 +2059,7 @@ to your fingertips. Click New Episode to begin your journey.`;
       mols.slice(0, 5).forEach(m => {
         const span = document.createElement('span'); span.className = 'hint-mol';
         span.textContent = m.length > 28 ? m.slice(0, 26) + '…' : m; span.title = m;
-        span.onclick = () => { document.getElementById('smiles-input').value = m; update3DFromSMILES(m); };
+        span.onclick = () => { document.getElementById('smiles-input').value = m; renderStructureFromSMILES(m); };
         strip.appendChild(span);
       });
     }
@@ -1893,7 +2094,7 @@ to your fingertips. Click New Episode to begin your journey.`;
     function updateSMILES(smiles) {
       document.getElementById('smiles-display').textContent = smiles || '—';
       document.getElementById('smiles-input').value = smiles || '';
-      update3DFromSMILES(smiles || '');
+      renderStructureFromSMILES(smiles || '');
     }
 
     function updateProps(props) {
@@ -1951,7 +2152,7 @@ to your fingertips. Click New Episode to begin your journey.`;
     <td>${p.qed != null ? p.qed.toFixed(3) : '—'}</td>
     <td>${p.sa_score != null ? p.sa_score.toFixed(2) : '—'}</td>
     <td>${p.molecular_weight != null ? Math.round(p.molecular_weight) : '—'}</td>`;
-      row.onclick = () => { document.getElementById('smiles-input').value = obs.current_smiles; update3DFromSMILES(obs.current_smiles); };
+      row.onclick = () => { document.getElementById('smiles-input').value = obs.current_smiles; renderStructureFromSMILES(obs.current_smiles); };
     }
 
     function applyObs(obs, isReset = false) {
@@ -1961,7 +2162,7 @@ to your fingertips. Click New Episode to begin your journey.`;
       // Update SMILES display (no 3D here — update3DFromObs does both)
       document.getElementById('smiles-display').textContent = obs.current_smiles || '—';
       document.getElementById('smiles-input').value = obs.current_smiles || '';
-      update3DFromObs(obs);
+      renderStructureFromObs(obs);
       updateProps(obs.properties);
       updateADMET(obs.properties, obs.admet);
       document.getElementById('si-step').textContent = step;

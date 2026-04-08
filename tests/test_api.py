@@ -76,3 +76,16 @@ def test_reset_accepts_seed_and_is_reproducible():
     assert first_obs["current_smiles"] == second_obs["current_smiles"]
     assert first_obs["metadata"]["episode_seed"] == 303
     assert second_obs["metadata"]["episode_seed"] == 303
+
+
+def test_structure_endpoint_returns_renderable_payload():
+    client = TestClient(app)
+
+    response = client.get("/api/structure", params={"smiles": "CC(=O)Nc1ccc(cc1)O"})
+    assert response.status_code == 200
+
+    payload = response.json()
+    assert payload["smiles"]
+    assert payload["structure_source"] in {"rdkit", "unavailable"}
+    if payload["structure_source"] == "rdkit":
+        assert payload["molblock_2d"] is not None

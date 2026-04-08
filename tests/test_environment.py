@@ -30,6 +30,7 @@ from server.environment import (
     _compute_bbb_score,
     _compute_herg_risk,
     _check_pains,
+    generate_structure_payload,
     render_mol_svg,
     DRAW_AVAILABLE,
     RDKIT_AVAILABLE,
@@ -365,6 +366,15 @@ def test_render_mol_svg_gracefully_handles_missing_draw(monkeypatch):
     monkeypatch.setattr(environment_module, "DRAW_AVAILABLE", False)
     monkeypatch.setattr(environment_module, "rdMolDraw2D", None)
     assert render_mol_svg(mol) is None
+
+
+@pytest.mark.skipif(not RDKIT_AVAILABLE, reason="RDKit not installed")
+def test_generate_structure_payload_returns_2d_block():
+    payload = generate_structure_payload(PARACETAMOL)
+
+    assert payload is not None
+    assert payload["structure_source"] == "rdkit"
+    assert "V2000" in (payload["molblock_2d"] or "")
 
 
 # ─── Integration: Full Episode ────────────────────────────────────────────────
