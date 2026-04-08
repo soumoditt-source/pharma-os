@@ -678,7 +678,9 @@ class PharmaEnvironment:
 
         # ── Validate SMILES ───────────────────────────────────────────────
         mol = Chem.MolFromSmiles(proposed) if RDKIT_AVAILABLE else None
-        props = compute_properties(proposed, self._target_smiles) if RDKIT_AVAILABLE else None
+        # Always go through compute_properties so the deterministic stub fallback
+        # still works when RDKit is unavailable in lightweight container builds.
+        props = compute_properties(proposed, self._target_smiles)
 
         if props is None:
             reward = -0.10

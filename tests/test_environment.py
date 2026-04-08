@@ -18,6 +18,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import server.environment as environment_module
 from models import PharmaAction, PharmaObservation, PharmaState, AVAILABLE_TASKS
 from server.sa_score import compute_sa_score, normalize_sa_score
 from server.environment import (
@@ -311,6 +312,18 @@ class TestEnvironmentLifecycle:
                 f"best_score decreased: {best} → {obs.best_score}"
             )
             best = obs.best_score
+
+    def test_step_uses_stub_scoring_when_rdkit_unavailable(self, monkeypatch):
+        monkeypatch.setattr(environment_module, "RDKIT_AVAILABLE", False)
+        env = environment_module.PharmaEnvironment(task_name="lipinski_optimizer")
+        env.reset(seed=101)
+
+        obs, reward, done, info = env.step(PharmaAction(smiles=PARACETAMOL))
+
+        assert isinstance(obs, PharmaObservation)
+        assert isinstance(reward, float)
+        assert info.get("error") != "invalid_smiles"
+        assert obs.current_smiles == PARACETAMOL
 
 
 # ─── Observation Schema Tests ─────────────────────────────────────────────────
