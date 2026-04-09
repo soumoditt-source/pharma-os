@@ -176,11 +176,15 @@ def _choose_action(
     except Exception:
         content = ""
 
+    fallback = _best_fallback_candidate(task_name, obs, tried)
+    fallback_score = _score_candidate(task_name, obs, fallback, tried)
+
     proposed = _extract_smiles(content)
-    if proposed and proposed not in tried and _score_candidate(task_name, obs, proposed, tried) > float("-inf"):
+    proposed_score = _score_candidate(task_name, obs, proposed, tried) if proposed else float("-inf")
+    if proposed and proposed not in tried and proposed_score >= fallback_score:
         return proposed
 
-    return _best_fallback_candidate(task_name, obs, tried)
+    return fallback
 
 
 def _score_candidate(
