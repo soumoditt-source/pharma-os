@@ -28,6 +28,7 @@ if API_KEY is None:
     raise ValueError("API_KEY environment variable is required (HF_TOKEN is accepted as a backward-compatible fallback)")
 
 client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+_PROXY_WARMED = False
 
 BENCHMARK = "pharma-os"
 TASKS = [
@@ -123,6 +124,31 @@ def _format_properties(obs: Dict[str, Any]) -> str:
         f"PAINS={props.get('pains_alert')} Solubility={admet.get('solubility_class')}\n"
         f"Feedback={str(obs.get('feedback', ''))[:400]}"
     )
+
+
+def _warm_litellm_proxy() -> None:
+    """Make one low-cost request through the injected proxy before task execution."""
+    global _PROXY_WARMED
+    if _PROXY_WARMED:
+        return
+
+    try:
+        client.chat.completions.create(
+            model=MODEL_NAME,
+            temperature=0,
+            max_tokens=4,
+            messages=[
+                {"role": "system", "content": "Return the single token READY."},
+                {"role": "user", "content": "READY"},
+            ],
+        )
+    except Exception:
+        # The benchmark must still run with deterministic fallback logic if the
+        # injected proxy rejects the request or the model is temporarily
+        # unavailable, but we still attempt the proxy call first.
+        pass
+    finally:
+        _PROXY_WARMED = True
 
 
 def _choose_action(
@@ -280,5 +306,6 @@ def run_task(task_name: str) -> None:
 
 
 if __name__ == "__main__":
+    _warm_litellm_proxy()
     for task in TASKS:
         run_task(task)

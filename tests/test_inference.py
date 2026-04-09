@@ -29,6 +29,24 @@ def test_inference_accepts_hf_token_fallback(monkeypatch):
     assert inference.API_KEY == "legacy-token"
 
 
+def test_warm_litellm_proxy_attempts_one_client_call(monkeypatch):
+    inference = _load_inference(monkeypatch)
+    calls = []
+
+    def _fake_create(**kwargs):
+        calls.append(kwargs)
+        raise RuntimeError("proxy unavailable")
+
+    monkeypatch.setattr(inference.client.chat.completions, "create", _fake_create)
+    inference._PROXY_WARMED = False
+
+    inference._warm_litellm_proxy()
+    inference._warm_litellm_proxy()
+
+    assert len(calls) == 1
+    assert calls[0]["model"] == "test-model"
+
+
 def test_run_task_emits_score_in_end_line(monkeypatch):
     inference = _load_inference(monkeypatch)
 
