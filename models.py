@@ -210,8 +210,8 @@ TASK_DESCRIPTIONS = {
         "  2. LogP (partition coefficient) < 5\n"
         "  3. H-Bond Donors (HBD) ≤ 5\n"
         "  4. H-Bond Acceptors (HBA) ≤ 10\n\n"
-        "Score: rules_satisfied / 4  →  range [0.0, 1.0]\n"
-        "Target: Score = 1.0 (all 4 rules satisfied)\n"
+        "Score: rules_satisfied / 4, clamped to the open interval (0, 1)\n"
+        "Target: Score >= 0.99 (all 4 rules satisfied without endpoint values)\n"
         "Max steps: 10\n\n"
         "Strategy: Remove carbon chains to reduce MW, add polar groups to\n"
         "reduce LogP, replace NH/OH groups to reduce HBD/HBA count."
@@ -222,7 +222,7 @@ TASK_DESCRIPTIONS = {
         "OBJECTIVE: Maximize QED (Quantitative Estimate of Drug-likeness).\n"
         "QED integrates MW, LogP, HBD, HBA, PSA, rotatable bonds, and\n"
         "aromatic rings into a desirability function.\n\n"
-        "Score: current QED  →  range [0.0, 1.0]\n"
+        "Score: current QED, clamped to the open interval (0, 1)\n"
         "Starting QED: ≤ 0.3 | Target: QED ≥ 0.75\n"
         "Max steps: 15\n\n"
         "PAINS Filter: Molecules matching Pan-Assay Interference patterns\n"
@@ -242,7 +242,7 @@ TASK_DESCRIPTIONS = {
         "  • Similarity = Tanimoto to known bioactive molecule\n"
         "  • ADMET = 0.4×BBB_score + 0.3×Solubility_score + 0.3×(1 - hERG_risk)\n\n"
         "PAINS Alert: Automatically zeros out the QED component\n"
-        "Score: Composite  →  range [0.0, 1.0]\n"
+        "Score: Composite, clamped to the open interval (0, 1)\n"
         "Target: Score ≥ 0.70\n"
         "Max steps: 20\n\n"
         "Strategy: Use drug-like scaffolds (indole, benzimidazole, pyrimidine).\n"
@@ -252,7 +252,7 @@ TASK_DESCRIPTIONS = {
 }
 
 TASK_SUCCESS_THRESHOLDS = {
-    "lipinski_optimizer": 1.0,    # All rules satisfied
+    "lipinski_optimizer": 0.99,   # All rules satisfied without hitting score endpoint
     "qed_optimizer": 0.75,        # Excellent drug-likeness
     "multi_objective_designer": 0.70,  # Strong multi-objective
 }

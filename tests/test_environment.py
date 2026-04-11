@@ -191,7 +191,7 @@ class TestTaskScoring:
         props = compute_properties(PARACETAMOL)
         assert props is not None
         score = compute_task_score(props, "lipinski_optimizer")
-        assert score == 1.0, f"Paracetamol should get perfect Lipinski score, got {score}"
+        assert score == pytest.approx(0.99, abs=1e-6), f"Paracetamol should get capped high Lipinski score, got {score}"
 
     def test_lipinski_violator_low_score(self):
         props = compute_properties(LIPINSKI_VIOLATOR)
@@ -204,14 +204,14 @@ class TestTaskScoring:
             props = compute_properties(smi)
             assert props is not None
             score = compute_task_score(props, "qed_optimizer")
-            assert 0.0 <= score <= 1.0, f"QED score out of range for {smi}: {score}"
+            assert 0.0 < score < 1.0, f"QED score must stay in the open interval for {smi}: {score}"
 
     def test_multi_obj_score_range(self):
         for smi in [PARACETAMOL, ASPIRIN]:
             props = compute_properties(smi, target_smiles=ASPIRIN)
             assert props is not None
             score = compute_task_score(props, "multi_objective_designer")
-            assert 0.0 <= score <= 1.0, f"Multi-obj score out of range: {score}"
+            assert 0.0 < score < 1.0, f"Multi-obj score must stay in the open interval: {score}"
 
     def test_pains_penalty_qed(self):
         """PAINS hit should reduce QED task score."""
@@ -387,7 +387,7 @@ class TestFullEpisode:
         env.reset()
         obs, _, _, _ = env.step(PharmaAction(smiles=PARACETAMOL))
         score = obs.properties.composite_score or compute_task_score(obs.properties, "lipinski_optimizer")
-        assert score == 1.0, f"Paracetamol should achieve score=1.0, got {score}"
+        assert score == pytest.approx(0.99, abs=1e-6), f"Paracetamol should achieve score=0.99, got {score}"
 
     def test_qed_episode_reward_sum_finite(self):
         env = PharmaEnvironment("qed_optimizer")

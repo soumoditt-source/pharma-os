@@ -93,13 +93,22 @@ def server_healthy(base_url: str) -> bool:
         return False
 
 
+def safe_unlink(path: Path) -> None:
+    try:
+        path.unlink(missing_ok=True)
+    except PermissionError:
+        # On Windows, a recently-terminated process can hold the PID file open
+        # briefly. The next write will still replace the stale contents.
+        pass
+
+
 def stop_existing_server() -> None:
     if not PID_FILE.exists():
         return
     try:
         server_pid = int(PID_FILE.read_text(encoding="utf-8").strip())
     except ValueError:
-        PID_FILE.unlink(missing_ok=True)
+        safe_unlink(PID_FILE)
         return
 
     try:
@@ -109,7 +118,7 @@ def stop_existing_server() -> None:
             os.kill(server_pid, 15)
     except OSError:
         pass
-    PID_FILE.unlink(missing_ok=True)
+    safe_unlink(PID_FILE)
 
 
 def start_server(host: str, port: int) -> subprocess.Popen:
@@ -194,7 +203,7 @@ def main() -> None:
                 started_process.wait(timeout=10)
             except subprocess.TimeoutExpired:
                 started_process.kill()
-            PID_FILE.unlink(missing_ok=True)
+            safe_unlink(PID_FILE)
 
 
 if __name__ == "__main__":

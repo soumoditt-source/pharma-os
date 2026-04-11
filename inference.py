@@ -37,7 +37,7 @@ TASKS = [
     "multi_objective_designer",
 ]
 TASK_SUCCESS_THRESHOLDS = {
-    "lipinski_optimizer": 1.0,
+    "lipinski_optimizer": 0.99,
     "qed_optimizer": 0.75,
     "multi_objective_designer": 0.70,
 }
@@ -76,6 +76,8 @@ TASK_CANDIDATE_LIBRARY: Dict[str, List[str]] = {
     "qed_optimizer": list(dict.fromkeys(FALLBACK_MOLECULES["qed_optimizer"] + IMPROVED_MOLECULE_HINTS["qed_optimizer"] + QED_START_MOLECULES)),
     "multi_objective_designer": list(dict.fromkeys(FALLBACK_MOLECULES["multi_objective_designer"] + IMPROVED_MOLECULE_HINTS["multi_objective_designer"] + MULTI_OBJ_START_MOLECULES)),
 }
+STRICT_SCORE_MIN = 0.01
+STRICT_SCORE_MAX = 0.99
 
 SYSTEM_PROMPT = (
     "You are a medicinal chemistry agent. "
@@ -291,6 +293,7 @@ def run_task(task_name: str) -> None:
                     break
 
             final_score = float(last_observation.get("best_score", 0.0) or 0.0)
+            final_score = max(STRICT_SCORE_MIN, min(STRICT_SCORE_MAX, final_score))
             success = final_score >= TASK_SUCCESS_THRESHOLDS[task_name]
         except Exception:
             if steps == 0:

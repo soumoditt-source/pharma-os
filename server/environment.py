@@ -490,6 +490,15 @@ def build_admet_summary(props: MolecularProperties) -> ADMETSummary:
 
 # ─── TASK SCORING ─────────────────────────────────────────────────────────────
 
+STRICT_SCORE_MIN = 0.01
+STRICT_SCORE_MAX = 0.99
+
+
+def _strict_unit_interval(score: float) -> float:
+    """Clamp public task scores to the open interval (0, 1)."""
+    return round(max(STRICT_SCORE_MIN, min(STRICT_SCORE_MAX, score)), 4)
+
+
 def compute_task_score(props: MolecularProperties, task_name: str) -> float:
     """Compute composite task score [0.0 – 1.0]."""
 
@@ -509,12 +518,12 @@ def compute_task_score(props: MolecularProperties, task_name: str) -> float:
         if props.hba and props.hba > 10:
             severity_penalty += min(0.08, (props.hba - 10) * 0.01)
 
-        return round(max(0.0, min(1.0, base_score - severity_penalty)), 4)
+        return _strict_unit_interval(base_score - severity_penalty)
 
     elif task_name == "qed_optimizer":
         qed = props.qed or 0.0
         pains_penalty = 0.20 if (props.pains_alert) else 0.0
-        return round(max(0.0, qed - pains_penalty), 4)
+        return _strict_unit_interval(qed - pains_penalty)
 
     elif task_name == "multi_objective_designer":
         qed = props.qed or 0.0
@@ -530,9 +539,9 @@ def compute_task_score(props: MolecularProperties, task_name: str) -> float:
             qed = 0.0
 
         composite = 0.35 * qed + 0.25 * sa_norm + 0.20 * sim + 0.20 * admet
-        return round(max(0.0, min(1.0, composite)), 4)
+        return _strict_unit_interval(composite)
 
-    return 0.0
+    return STRICT_SCORE_MIN
 
 
 def _logS_to_score(logS: float) -> float:
@@ -855,7 +864,7 @@ class PharmaEnvironment:
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     def _is_solved(self, score: float) -> bool:
-        return score >= TASK_SUCCESS_THRESHOLDS.get(self.task_name, 1.0)
+        return score >= TASK_SUCCESS_THRESHOLDS.get(self.task_name, STRICT_SCORE_MAX)
 
     def _make_obs(
         self, smiles, props, admet, reward, done, step, feedback, svg=None

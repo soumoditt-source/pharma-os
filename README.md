@@ -80,7 +80,7 @@ The dashboard also includes a smart compound resolver for exact compounds, commo
 
 | Task | Difficulty | Goal | Success threshold | Max steps |
 | --- | --- | --- | --- | --- |
-| `lipinski_optimizer` | easy | satisfy Lipinski constraints for oral drug-likeness | `1.00` | `10` |
+| `lipinski_optimizer` | easy | satisfy Lipinski constraints for oral drug-likeness | `0.99` | `10` |
 | `qed_optimizer` | medium | maximize QED while avoiding PAINS penalties | `0.75` | `15` |
 | `multi_objective_designer` | hard | optimize QED, SA, similarity, and ADMET jointly | `0.70` | `20` |
 
@@ -304,9 +304,9 @@ Result:
 
 | Task | Steps | Final score | Success |
 | --- | --- | --- | --- |
-| `lipinski_optimizer` | `1` | `1.00` | `true` |
+| `lipinski_optimizer` | `1` | `0.99` | `true` |
 | `qed_optimizer` | `1` | `0.84` | `true` |
-| `multi_objective_designer` | `4` | `0.78` | `true` |
+| `multi_objective_designer` | `1` | `0.73` | `true` |
 
 These values came from the reproducible seeded smoke run that the preflight script executes locally.
 
