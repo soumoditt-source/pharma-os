@@ -156,7 +156,7 @@ class PharmaObservation(BaseModel):
         default="Provide a SMILES string of your proposed molecule modification.",
     )
     visited_count: int = Field(default=0, description="Unique molecules tried so far")
-    best_score: float = Field(default=0.0, description="Best composite score this episode")
+    best_score: float = Field(default=0.01, description="Best composite score this episode")
     history: List[Dict[str, Any]] = Field(default_factory=list, description="Recent mol/score history (last 5)")
     mol_svg: Optional[str] = Field(
         default=None, description="SVG rendering of the current molecule (base64 or raw SVG)"
@@ -178,7 +178,7 @@ class PharmaState(BaseModel):
     max_steps: int = Field(default=10)
     initial_smiles: str = Field(default="")
     target_smiles: str = Field(default="")
-    best_score: float = Field(default=0.0)
+    best_score: float = Field(default=0.01)
     best_smiles: str = Field(default="")
     visited_molecules: List[str] = Field(default_factory=list)
     done: bool = Field(default=False)

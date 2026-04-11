@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
+import server.app as app_module
 from server.app import app
 
 
@@ -59,6 +60,32 @@ def test_runtime_compatibility_endpoints_exist():
     mcp_payload = mcp_response.json()
     assert mcp_response.status_code == 200
     assert mcp_payload["jsonrpc"] == "2.0"
+
+
+def test_state_before_reset_keeps_best_score_in_open_interval():
+    app_module._http_env = None
+    client = TestClient(app)
+
+    response = client.get("/state")
+    assert response.status_code == 200
+
+    payload = response.json()
+    assert 0.0 < payload["best_score"] < 1.0
+    assert 0.0 < payload["state"]["best_score"] < 1.0
+
+
+def test_schema_best_score_defaults_stay_in_open_interval():
+    client = TestClient(app)
+
+    response = client.get("/schema")
+    assert response.status_code == 200
+
+    payload = response.json()
+    observation_default = payload["observation"]["properties"]["best_score"]["default"]
+    state_default = payload["state"]["properties"]["best_score"]["default"]
+
+    assert 0.0 < observation_default < 1.0
+    assert 0.0 < state_default < 1.0
 
 
 def test_reset_accepts_seed_and_is_reproducible():

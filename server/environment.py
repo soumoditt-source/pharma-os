@@ -139,6 +139,12 @@ TASK_RESET_BASE_SEEDS = {
     "multi_objective_designer": 303,
 }
 
+TASK_MAX_STEPS = {
+    "lipinski_optimizer": 10,
+    "qed_optimizer": 15,
+    "multi_objective_designer": 20,
+}
+
 # Medicinal chemistry hint molecules (fallback for inference script)
 IMPROVED_MOLECULE_HINTS = {
     "lipinski_optimizer": [
@@ -653,15 +659,15 @@ class PharmaEnvironment:
         if self.task_name == "lipinski_optimizer":
             start_pool = LIPINSKI_START_MOLECULES
             target_smiles = ""
-            max_steps = 10
+            max_steps = TASK_MAX_STEPS["lipinski_optimizer"]
         elif self.task_name == "qed_optimizer":
             start_pool = QED_START_MOLECULES
             target_smiles = ""
-            max_steps = 15
+            max_steps = TASK_MAX_STEPS["qed_optimizer"]
         else:
             start_pool = MULTI_OBJ_START_MOLECULES
             target_smiles = rng.choice(TARGET_ACTIVE_MOLECULES)
-            max_steps = 20
+            max_steps = TASK_MAX_STEPS["multi_objective_designer"]
 
         start_smiles, props = self._select_valid_seed(start_pool, target_smiles, rng)
         self._current_smiles = start_smiles
@@ -858,7 +864,11 @@ class PharmaEnvironment:
 
     def get_state(self) -> PharmaState:
         if self._state is None:
-            return PharmaState()
+            return PharmaState(
+                task_name=self.task_name,
+                max_steps=TASK_MAX_STEPS.get(self.task_name, 10),
+                best_score=STRICT_SCORE_MIN,
+            )
         return self._state
 
     # ── Helpers ───────────────────────────────────────────────────────────────
@@ -898,7 +908,7 @@ class PharmaEnvironment:
             target_description=TASK_DESCRIPTIONS[self.task_name],
             action_space_description='{"smiles": "<SMILES>", "reasoning": "<optional>"}',
             visited_count=len(self._visited),
-            best_score=self._state.best_score if self._state else 0.0,
+            best_score=self._state.best_score if self._state else STRICT_SCORE_MIN,
             history=list(self._history[-self.MAX_HISTORY:]),
             mol_svg=svg,
             metadata={"episode_seed": self._episode_seed} if self._episode_seed is not None else {},
