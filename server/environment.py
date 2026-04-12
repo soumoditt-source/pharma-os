@@ -544,17 +544,17 @@ def compute_task_score(props: MolecularProperties, task_name: str) -> float:
 
 
 def _logS_to_score(logS: float) -> float:
-    """Map LogS to [0,1] score. Good solubility is -2 to 0."""
+    """Map LogS to (0, 1) score, exclusive. Good solubility is -2 to 0."""
     if logS > -1:
-        return 1.0
+        return 0.98  # high solubility — near-maximum but never 1.0
     elif logS > -3:
-        return 0.8
+        return 0.80
     elif logS > -5:
-        return 0.4
+        return 0.40
     elif logS > -7:
-        return 0.1
+        return 0.10
     else:
-        return 0.0
+        return 0.02  # very low solubility — near-minimum but never 0.0
 
 
 # ─── ENVIRONMENT CLASS ────────────────────────────────────────────────────────

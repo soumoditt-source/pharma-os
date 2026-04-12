@@ -256,7 +256,8 @@ def run_task(task_name: str) -> None:
     steps = 0
     success = False
     last_observation: Dict[str, Any] = {}
-    final_score = 0.0
+    # Initialize to STRICT_SCORE_MIN so any exception path never prints exactly 0.0
+    final_score = STRICT_SCORE_MIN
 
     print(f"[START] task={task_name} env={BENCHMARK} model={MODEL_NAME}", flush=True)
 
@@ -293,16 +294,18 @@ def run_task(task_name: str) -> None:
         except Exception:
             if steps == 0:
                 rewards = []
+            # Always clamp before printing — guarantees score stays in (0, 1) even on error
+            final_score = max(STRICT_SCORE_MIN, min(STRICT_SCORE_MAX, final_score))
             print(
-                f"[END] success=false steps={steps} score={final_score:.2f} rewards="
-                f"{','.join(f'{reward:.2f}' for reward in rewards) if rewards else '0.00'}",
+                f"[END] success=false steps={steps} score={final_score:.4f} rewards="
+                f"{','.join(f'{r:.4f}' for r in rewards) if rewards else f'{STRICT_SCORE_MIN:.4f}'}",
                 flush=True,
             )
             return
 
     print(
-        f"[END] success={'true' if success else 'false'} steps={steps} score={final_score:.2f} rewards="
-        f"{','.join(f'{reward:.2f}' for reward in rewards) if rewards else '0.00'}",
+        f"[END] success={'true' if success else 'false'} steps={steps} score={final_score:.4f} rewards="
+        f"{','.join(f'{r:.4f}' for r in rewards) if rewards else f'{STRICT_SCORE_MIN:.4f}'}",
         flush=True,
     )
 

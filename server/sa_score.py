@@ -148,11 +148,14 @@ def _sa_score_inner(mol) -> float:
 
 def normalize_sa_score(sa: float) -> float:
     """
-    Normalize SA score to [0, 1] where 1 = easy (good) and 0 = hard.
+    Normalize SA score to (0, 1) exclusive where 1 = easy (good) and 0 = hard.
+    Clamped to [0.01, 0.99] so this intermediate value never creates a boundary
+    condition in composite task score formulas.
     Used in composite reward functions.
     """
-    # Linear mapping: SA=1 → 1.0, SA=10 → 0.0
-    return round(max(0.0, min(1.0, (10.0 - sa) / 9.0)), 4)
+    # Linear mapping: SA=1 → ~0.99, SA=10 → 0.01 (never exactly 0 or 1)
+    raw = (10.0 - sa) / 9.0
+    return round(max(0.01, min(0.99, raw)), 4)
 
 
 def sa_score_to_label(sa: float) -> str:
