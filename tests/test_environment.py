@@ -191,7 +191,7 @@ class TestTaskScoring:
         props = compute_properties(PARACETAMOL)
         assert props is not None
         score = compute_task_score(props, "lipinski_optimizer")
-        assert score == pytest.approx(0.99, abs=1e-6), f"Paracetamol should get capped high Lipinski score, got {score}"
+        assert score == pytest.approx(0.97, abs=1e-6), f"Paracetamol should get capped high Lipinski score, got {score}"
 
     def test_lipinski_violator_low_score(self):
         props = compute_properties(LIPINSKI_VIOLATOR)
@@ -387,7 +387,7 @@ class TestFullEpisode:
         env.reset()
         obs, _, _, _ = env.step(PharmaAction(smiles=PARACETAMOL))
         score = obs.properties.composite_score or compute_task_score(obs.properties, "lipinski_optimizer")
-        assert score == pytest.approx(0.99, abs=1e-6), f"Paracetamol should achieve score=0.99, got {score}"
+        assert score == pytest.approx(0.97, abs=1e-6), f"Paracetamol should achieve score=0.97, got {score}"
 
     def test_qed_episode_reward_sum_finite(self):
         env = PharmaEnvironment("qed_optimizer")

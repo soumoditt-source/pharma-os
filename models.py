@@ -199,6 +199,30 @@ AVAILABLE_TASKS = [
     "multi_objective_designer",   # HARD: multi-property + ADMET optimization
 ]
 
+TASK_DIFFICULTIES = {
+    "lipinski_optimizer": "easy",
+    "qed_optimizer": "medium",
+    "multi_objective_designer": "hard",
+}
+
+TASK_MAX_STEPS = {
+    "lipinski_optimizer": 10,
+    "qed_optimizer": 15,
+    "multi_objective_designer": 20,
+}
+
+STRICT_SCORE_MIN = 0.01
+STRICT_SCORE_MAX = 0.97
+
+TASK_SCORE_RANGES = {
+    task: {
+        "min": STRICT_SCORE_MIN,
+        "max": STRICT_SCORE_MAX,
+        "strict": True,
+    }
+    for task in AVAILABLE_TASKS
+}
+
 TASK_DESCRIPTIONS = {
     "lipinski_optimizer": (
         "🟢 EASY — Lipinski Rule of Five Optimizer\n"
@@ -211,7 +235,7 @@ TASK_DESCRIPTIONS = {
         "  3. H-Bond Donors (HBD) ≤ 5\n"
         "  4. H-Bond Acceptors (HBA) ≤ 10\n\n"
         "Score: rules_satisfied / 4, clamped to the open interval (0, 1)\n"
-        "Target: Score >= 0.99 (all 4 rules satisfied without endpoint values)\n"
+        "Target: Score >= 0.97 (all 4 rules satisfied without endpoint values)\n"
         "Max steps: 10\n\n"
         "Strategy: Remove carbon chains to reduce MW, add polar groups to\n"
         "reduce LogP, replace NH/OH groups to reduce HBD/HBA count."
@@ -252,7 +276,7 @@ TASK_DESCRIPTIONS = {
 }
 
 TASK_SUCCESS_THRESHOLDS = {
-    "lipinski_optimizer": 0.99,   # All rules satisfied without hitting score endpoint
+    "lipinski_optimizer": 0.97,   # All rules satisfied without riding the endpoint
     "qed_optimizer": 0.75,        # Excellent drug-likeness
     "multi_objective_designer": 0.70,  # Strong multi-objective
 }

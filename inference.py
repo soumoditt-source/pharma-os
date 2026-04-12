@@ -14,9 +14,12 @@ from server.environment import (
     LIPINSKI_START_MOLECULES,
     MULTI_OBJ_START_MOLECULES,
     QED_START_MOLECULES,
+    STRICT_SCORE_MAX,
+    STRICT_SCORE_MIN,
     compute_properties,
     compute_task_score,
 )
+from models import TASK_SUCCESS_THRESHOLDS
 
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
@@ -36,11 +39,6 @@ TASKS = [
     "qed_optimizer",
     "multi_objective_designer",
 ]
-TASK_SUCCESS_THRESHOLDS = {
-    "lipinski_optimizer": 0.99,
-    "qed_optimizer": 0.75,
-    "multi_objective_designer": 0.70,
-}
 TASK_RESET_SEEDS = {
     "lipinski_optimizer": 101,
     "qed_optimizer": 202,
@@ -76,9 +74,6 @@ TASK_CANDIDATE_LIBRARY: Dict[str, List[str]] = {
     "qed_optimizer": list(dict.fromkeys(FALLBACK_MOLECULES["qed_optimizer"] + IMPROVED_MOLECULE_HINTS["qed_optimizer"] + QED_START_MOLECULES)),
     "multi_objective_designer": list(dict.fromkeys(FALLBACK_MOLECULES["multi_objective_designer"] + IMPROVED_MOLECULE_HINTS["multi_objective_designer"] + MULTI_OBJ_START_MOLECULES)),
 }
-STRICT_SCORE_MIN = 0.01
-STRICT_SCORE_MAX = 0.99
-
 SYSTEM_PROMPT = (
     "You are a medicinal chemistry agent. "
     "Return exactly one improved molecule in the format "

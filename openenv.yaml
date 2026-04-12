@@ -28,8 +28,8 @@ tasks:
       Modify a molecule to satisfy all 4 Lipinski Rule of Five criteria
       for oral drug bioavailability (MW<500, LogP<5, HBD≤5, HBA≤10).
     max_steps: 10
-    score_range: [0.01, 0.99]
-    success_threshold: 0.99
+    score_range: [0.01, 0.97]
+    success_threshold: 0.97
     action_type: smiles_string
     observation_keys:
       - current_smiles
@@ -45,7 +45,7 @@ tasks:
       Includes PAINS filter penalty (-0.20) for pan-assay interference.
       Starting QED ≤ 0.30, target QED ≥ 0.75.
     max_steps: 15
-    score_range: [0.01, 0.99]
+    score_range: [0.01, 0.97]
     success_threshold: 0.75
     action_type: smiles_string
     observation_keys:
@@ -63,7 +63,7 @@ tasks:
       properties (BBB penetration, aqueous solubility, hERG risk).
       Composite = 0.35*QED + 0.25*SA_norm + 0.20*Similarity + 0.20*ADMET.
     max_steps: 20
-    score_range: [0.01, 0.99]
+    score_range: [0.01, 0.97]
     success_threshold: 0.70
     action_type: smiles_string
     observation_keys:

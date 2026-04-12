@@ -33,7 +33,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from models import (
     PharmaAction, PharmaObservation, PharmaState,
-    AVAILABLE_TASKS, TASK_DESCRIPTIONS, TASK_SUCCESS_THRESHOLDS,
+    AVAILABLE_TASKS, TASK_DESCRIPTIONS, TASK_DIFFICULTIES, TASK_MAX_STEPS,
+    TASK_SCORE_RANGES, TASK_SUCCESS_THRESHOLDS,
 )
 from server.environment import (
     DRAW_AVAILABLE,
@@ -288,9 +289,25 @@ async def mcp(body: Dict[str, Any] = Body(default_factory=dict)) -> Dict[str, An
 @app.get("/tasks")
 async def list_tasks() -> Dict[str, Any]:
     """List all available tasks with metadata."""
+    task_specs = [
+        {
+            "name": task,
+            "difficulty": TASK_DIFFICULTIES[task],
+            "max_steps": TASK_MAX_STEPS[task],
+            "success_threshold": TASK_SUCCESS_THRESHOLDS[task],
+            "score_range": TASK_SCORE_RANGES[task],
+            "description": TASK_DESCRIPTIONS[task],
+            "hints": IMPROVED_MOLECULE_HINTS.get(task, []),
+        }
+        for task in AVAILABLE_TASKS
+    ]
     return {
         "tasks": AVAILABLE_TASKS,
+        "task_specs": task_specs,
         "descriptions": TASK_DESCRIPTIONS,
+        "difficulties": TASK_DIFFICULTIES,
+        "max_steps": TASK_MAX_STEPS,
+        "score_ranges": TASK_SCORE_RANGES,
         "success_thresholds": TASK_SUCCESS_THRESHOLDS,
         "hints": {t: IMPROVED_MOLECULE_HINTS.get(t, []) for t in AVAILABLE_TASKS},
     }

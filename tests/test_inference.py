@@ -74,7 +74,7 @@ def test_run_task_emits_score_in_end_line(monkeypatch):
     lines = [line.strip() for line in stdout.getvalue().splitlines() if line.strip()]
     assert lines[0].startswith("[START] task=lipinski_optimizer env=pharma-os model=test-model")
     assert lines[1] == "[STEP] step=1 action=CCO reward=0.25 done=true error=null"
-    assert lines[2] == "[END] success=true steps=1 score=0.99 rewards=0.25"
+    assert lines[2] == "[END] success=true steps=1 score=0.97 rewards=0.25"
 
 
 def test_run_task_keeps_stdout_strict_when_candidate_scoring_runs(monkeypatch):

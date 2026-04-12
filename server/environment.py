@@ -72,7 +72,10 @@ from models import (
     MolecularProperties,
     ADMETSummary,
     TASK_DESCRIPTIONS,
+    TASK_MAX_STEPS,
     TASK_SUCCESS_THRESHOLDS,
+    STRICT_SCORE_MIN,
+    STRICT_SCORE_MAX,
 )
 from server.sa_score import compute_sa_score, normalize_sa_score, sa_score_to_label
 
@@ -137,12 +140,6 @@ TASK_RESET_BASE_SEEDS = {
     "lipinski_optimizer": 101,
     "qed_optimizer": 202,
     "multi_objective_designer": 303,
-}
-
-TASK_MAX_STEPS = {
-    "lipinski_optimizer": 10,
-    "qed_optimizer": 15,
-    "multi_objective_designer": 20,
 }
 
 # Medicinal chemistry hint molecules (fallback for inference script)
@@ -495,10 +492,6 @@ def build_admet_summary(props: MolecularProperties) -> ADMETSummary:
 
 
 # ─── TASK SCORING ─────────────────────────────────────────────────────────────
-
-STRICT_SCORE_MIN = 0.01
-STRICT_SCORE_MAX = 0.99
-
 
 def _strict_unit_interval(score: float) -> float:
     """Clamp public task scores to the open interval (0, 1)."""

@@ -62,6 +62,22 @@ def test_runtime_compatibility_endpoints_exist():
     assert mcp_payload["jsonrpc"] == "2.0"
 
 
+def test_tasks_endpoint_exposes_strict_score_ranges():
+    client = TestClient(app)
+
+    response = client.get("/tasks")
+    assert response.status_code == 200
+
+    payload = response.json()
+    assert "task_specs" in payload
+    assert "score_ranges" in payload
+
+    for spec in payload["task_specs"]:
+        score_range = spec["score_range"]
+        assert 0.0 < score_range["min"] < score_range["max"] < 1.0
+        assert score_range["strict"] is True
+
+
 def test_state_before_reset_keeps_best_score_in_open_interval():
     app_module._http_env = None
     client = TestClient(app)
